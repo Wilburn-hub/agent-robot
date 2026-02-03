@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AI 机器人周报">
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="#0B121A" />
+  <rect x="10" y="10" width="44" height="44" rx="12" fill="none" stroke="#58F2C9" stroke-width="2" />
+  <rect x="18" y="18" width="28" height="28" rx="8" fill="none" stroke="#C7FF4B" stroke-width="2" />
+  <circle cx="46" cy="18" r="4" fill="#58F2C9" />
+</svg>
