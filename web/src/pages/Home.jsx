@@ -29,6 +29,25 @@ function formatTime(value) {
   return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function hashString(value) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function truncateText(value, maxLength) {
+  if (!value) return "";
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, Math.max(0, maxLength - 1))}…`;
+}
+
 function classifyAiTag(item) {
   const source = (item.source || "").toLowerCase();
   if (source.includes("arxiv") || source.includes("paper") || source.includes("research")) {
@@ -112,6 +131,62 @@ export default function Home() {
   const trendingData = trending;
   const aiData = aiItems;
 
+  const radarPoints = useMemo(() => {
+    const now = Date.now();
+    const repoItems = trendingData.slice(0, 6).map((item) => {
+      const score = Number(item.stars_delta || item.stars || 0);
+      return {
+        type: "repo",
+        label: `${item.owner}/${item.name}`,
+        detail: `${formatCompactNumber(item.stars_delta)} 本周`,
+        url: item.url,
+        score: score > 0 ? score : 1,
+      };
+    });
+
+    const aiItemsForRadar = aiData.slice(0, 6).map((item) => {
+      const publishedAt = item.published_at || item.time;
+      let ageHours = 24;
+      if (publishedAt) {
+        const diff = (now - new Date(publishedAt).getTime()) / 36e5;
+        ageHours = Number.isFinite(diff) && diff >= 0 ? diff : 24;
+      }
+      const score = Math.max(1, 72 - ageHours);
+      return {
+        type: "ai",
+        label: item.title || "未命名资讯",
+        detail: item.source || "资讯源",
+        url: item.url,
+        score,
+      };
+    });
+
+    const rawItems = [...repoItems, ...aiItemsForRadar].filter((item) => item.label);
+    if (!rawItems.length) return [];
+
+    const scored = rawItems.map((item) => ({
+      ...item,
+      rawScore: Math.log10(item.score + 1),
+    }));
+    const maxScore = Math.max(...scored.map((item) => item.rawScore), 1);
+
+    return scored.map((item, index) => {
+      const strength = clamp(item.rawScore / maxScore, 0.2, 1);
+      const angleSeed = hashString(`${item.type}-${item.label}`) + index * 47;
+      const angle = (angleSeed % 360) * (Math.PI / 180);
+      const radius = 16 + strength * 34;
+      const x = clamp(50 + radius * Math.cos(angle), 8, 92);
+      const y = clamp(50 + radius * Math.sin(angle), 8, 92);
+      return {
+        ...item,
+        x,
+        y,
+        size: Math.round(7 + strength * 6),
+        labelShort: truncateText(item.label, 24),
+      };
+    });
+  }, [trendingData, aiData]);
+
   const handleViewWeekly = () => {
     setPeriod("weekly");
     setLanguage("全部");
@@ -123,23 +198,20 @@ export default function Home() {
   const handleGenerateDigest = async () => {
     try {
       setDigestLoading(true);
-      if (API.getToken()) {
-        setDigestText("");
-      }
+      setDigestOpen(true);
+      setDigestText("正在生成简报并发送推送，请稍候...");
       const token = API.getToken();
       if (token) {
         const res = await API.request("/api/digest/send", { method: "POST" });
         setDigestText(res.data.text || "");
-        setDigestOpen(true);
       } else {
         const res = await API.request(
           `/api/digest/preview${buildQuery({ topics: "weekly,ai", keywords: debouncedSearch })}`
         );
         setDigestText(res.data.text || "");
-        setDigestOpen(true);
       }
     } catch (error) {
-      alert(error.message);
+      setDigestText(`生成失败：${error.message}`);
     } finally {
       setDigestLoading(false);
     }
@@ -205,9 +277,30 @@ export default function Home() {
                 <div className="ring"></div>
                 <div className="ring"></div>
                 <div className="sweep"></div>
-                <div className="blip blip-1"></div>
-                <div className="blip blip-2"></div>
-                <div className="blip blip-3"></div>
+                {radarPoints.map((item, index) => {
+                  const BlipTag = item.url ? "a" : "div";
+                  return (
+                    <BlipTag
+                      key={`${item.type}-${item.label}-${index}`}
+                      className={`radar-blip ${item.type}`}
+                      style={{
+                        "--x": `${item.x}%`,
+                        "--y": `${item.y}%`,
+                        "--size": `${item.size}px`,
+                      }}
+                      data-label={`${item.labelShort} · ${item.detail}`}
+                      title={`${item.label} · ${item.detail}`}
+                      {...(item.url
+                        ? { href: item.url, target: "_blank", rel: "noreferrer" }
+                        : { role: "img", "aria-label": item.label })}
+                    >
+                      <span className="radar-pulse"></span>
+                    </BlipTag>
+                  );
+                })}
+                {!radarPoints.length && (
+                  <div className="radar-empty">暂无信号</div>
+                )}
               </div>
               <div className="radar-foot">
                 <p>
@@ -242,6 +335,7 @@ export default function Home() {
               const title = `${item.owner}/${item.name}`;
               const desc = item.description || "暂无描述";
               const delta = `+${formatCompactNumber(item.stars_delta)}`;
+              const repoUrl = item.url;
               const tags = [item.language || "AI", "Weekly", "Trending"];
               return (
                 <div key={`${title}-${index}`} className={`weekly-card ${index === 1 ? "featured" : ""}`}>
@@ -249,13 +343,26 @@ export default function Home() {
                     <p className="weekly-rank">#{String(index + 1).padStart(2, "0")}</p>
                     <span className="chip">{delta}</span>
                   </div>
-                  <h3>{title}</h3>
+                  <h3>
+                    {repoUrl ? (
+                      <a className="link-title" href={repoUrl} target="_blank" rel="noreferrer">
+                        {title}
+                      </a>
+                    ) : (
+                      title
+                    )}
+                  </h3>
                   <p className="weekly-desc">{desc}</p>
                   <div className="weekly-tags">
                     {tags.map((tag) => (
                       <span key={`${title}-${tag}`}>{tag}</span>
                     ))}
                   </div>
+                  {repoUrl && (
+                    <div className="source-links">
+                      <a href={repoUrl} target="_blank" rel="noreferrer">GitHub</a>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -284,20 +391,36 @@ export default function Home() {
             </div>
           </div>
           <div className="trending-list">
-            {trendingData.map((item, index) => (
-              <div className="trending-card" key={`${item.owner}-${item.name}`}>
-                <div className="trending-rank">#{String(index + 1).padStart(2, "0")}</div>
-                <div className="trending-meta">
-                  <h3>{item.owner}/{item.name}</h3>
-                  <p>{item.description || "暂无描述"}</p>
+            {trendingData.map((item, index) => {
+              const repoUrl = item.url;
+              return (
+                <div className="trending-card" key={`${item.owner}-${item.name}`}>
+                  <div className="trending-rank">#{String(index + 1).padStart(2, "0")}</div>
+                  <div className="trending-meta">
+                    <h3>
+                      {repoUrl ? (
+                        <a className="link-title" href={repoUrl} target="_blank" rel="noreferrer">
+                          {item.owner}/{item.name}
+                        </a>
+                      ) : (
+                        `${item.owner}/${item.name}`
+                      )}
+                    </h3>
+                    <p>{item.description || "暂无描述"}</p>
+                    {repoUrl && (
+                      <div className="source-links">
+                        <a href={repoUrl} target="_blank" rel="noreferrer">GitHub</a>
+                      </div>
+                    )}
+                  </div>
+                  <div className="trending-stats">
+                    <span>{item.language || "未知"}</span>
+                    <span>{formatCompactNumber(item.stars)} 星标</span>
+                    <span>+{formatCompactNumber(item.stars_delta)} 本周</span>
+                  </div>
                 </div>
-                <div className="trending-stats">
-                  <span>{item.language || "未知"}</span>
-                  <span>{formatCompactNumber(item.stars)} 星标</span>
-                  <span>+{formatCompactNumber(item.stars_delta)} 本周</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {!trendingData.length && (
             <p className="empty-state">暂无匹配的仓库数据</p>
@@ -327,8 +450,21 @@ export default function Home() {
               <div className="ai-item" key={`${item.title}-${index}`}>
                 <div className="ai-time">{formatTime(item.published_at || item.time)}</div>
                 <div>
-                  <div className="ai-title">{item.title}</div>
+                  <div className="ai-title">
+                    {item.url ? (
+                      <a className="link-title" href={item.url} target="_blank" rel="noreferrer">
+                        {item.title}
+                      </a>
+                    ) : (
+                      item.title
+                    )}
+                  </div>
                   <div className="ai-sub">{item.source}</div>
+                  {item.url && (
+                    <div className="source-links">
+                      <a href={item.url} target="_blank" rel="noreferrer">原文</a>
+                    </div>
+                  )}
                 </div>
                 <div className="ai-tag">{classifyAiTag(item)}</div>
               </div>
@@ -375,7 +511,9 @@ export default function Home() {
               </div>
               <button className="ghost small" onClick={() => setDigestOpen(false)}>关闭</button>
             </div>
-            <pre className="modal-body">{digestText || "暂无内容"}</pre>
+            <pre className="modal-body">
+              {digestLoading ? "生成中，请稍候..." : (digestText || "暂无内容")}
+            </pre>
             <div className="modal-actions">
               <button
                 className="ghost"

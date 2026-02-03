@@ -45,6 +45,20 @@ function truncateText(text, max = 60) {
   return `${clean.slice(0, max)}...`;
 }
 
+async function mapWithConcurrency(list, limit, mapper) {
+  const results = new Array(list.length);
+  let index = 0;
+  async function worker() {
+    while (index < list.length) {
+      const current = index++;
+      results[current] = await mapper(list[current], current);
+    }
+  }
+  const workers = Array.from({ length: Math.min(limit, list.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
 function hasChinese(text) {
   return /[\u4e00-\u9fa5]/.test(text || "");
 }
@@ -89,9 +103,18 @@ async function buildDigestText(options = {}) {
     if (!trending.length) {
       lines.push("- 暂无匹配热度项目");
     } else {
-      for (const item of trending) {
-        const descRaw = item.description || "";
-        const descZh = await translateToZh(descRaw);
+      const descList = await mapWithConcurrency(
+        trending,
+        3,
+        async (item) => {
+          const descRaw = truncateText(item.description || "", 200);
+          return translateToZh(descRaw);
+        }
+      );
+      for (let i = 0; i < trending.length; i += 1) {
+        const item = trending[i];
+        const descRaw = truncateText(item.description || "", 200);
+        const descZh = descList[i];
         const desc = truncateText(descZh || descRaw, 90);
         const lang = item.language ? ` · 语言：${item.language}` : "";
         const title = item.url
@@ -113,8 +136,19 @@ async function buildDigestText(options = {}) {
     if (!mainAi.length) {
       lines.push("- 暂无匹配 AI 资讯");
     } else {
-      for (const item of mainAi) {
-        const titleZh = await translateToZh(item.title || "");
+      const titleList = await mapWithConcurrency(
+        mainAi,
+        3,
+        async (item) => translateToZh(item.title || "")
+      );
+      const summaryList = await mapWithConcurrency(
+        mainAi,
+        3,
+        async (item) => translateToZh(truncateText(item.summary || "", 240))
+      );
+      for (let i = 0; i < mainAi.length; i += 1) {
+        const item = mainAi[i];
+        const titleZh = titleList[i];
         const titleText = truncateText(titleZh || item.title, 90);
         const title = item.url ? `[${titleText}](${item.url})` : titleText;
         const source = item.source ? `来源：${item.source}` : "来源：未知";
@@ -122,7 +156,7 @@ async function buildDigestText(options = {}) {
         const langHint = hasChinese(titleText) ? "" : " · 英文标题";
         lines.push(`- ${title}（${source} · ${category}${langHint}）`);
         if (item.summary) {
-          const summaryZh = await translateToZh(item.summary);
+          const summaryZh = summaryList[i];
           const summary = truncateText(summaryZh || item.summary, 100);
           lines.push(`> 摘要：${summary}${hasChinese(summary) ? "" : "（原文）"}`);
         }
@@ -136,15 +170,26 @@ async function buildDigestText(options = {}) {
       if (!papers.length) {
         lines.push("- 暂无匹配论文条目");
       } else {
-        for (const item of papers) {
-          const titleZh = await translateToZh(item.title || "");
+        const paperTitleList = await mapWithConcurrency(
+          papers,
+          2,
+          async (item) => translateToZh(item.title || "")
+        );
+        const paperSummaryList = await mapWithConcurrency(
+          papers,
+          2,
+          async (item) => translateToZh(truncateText(item.summary || "", 240))
+        );
+        for (let i = 0; i < papers.length; i += 1) {
+          const item = papers[i];
+          const titleZh = paperTitleList[i];
           const titleText = truncateText(titleZh || item.title, 90);
           const title = item.url ? `[${titleText}](${item.url})` : titleText;
           const source = item.source ? `来源：${item.source}` : "来源：未知";
           const langHint = hasChinese(titleText) ? "" : " · 英文标题";
           lines.push(`- ${title}（${source}${langHint}）`);
           if (item.summary) {
-            const summaryZh = await translateToZh(item.summary);
+            const summaryZh = paperSummaryList[i];
             const summary = truncateText(summaryZh || item.summary, 100);
             lines.push(`> 摘要：${summary}${hasChinese(summary) ? "" : "（原文）"}`);
           }

@@ -63,3 +63,10 @@
 - `GET /api/settings`
 - `PUT /api/settings`
 - `POST /api/admin/refresh`
+
+## 本次变更（雷达真实数据）
+- 页面：`web/src/pages/Home.jsx`
+  - 生成雷达数据点（来自趋势仓库 + AI 资讯）
+  - 为雷达点提供可点击链接与悬停提示
+- 样式：`web/src/styles.css`
+  - 新增雷达点样式、悬浮提示与脉冲动效

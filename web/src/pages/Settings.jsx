@@ -193,7 +193,7 @@ export default function Settings() {
           <div className="panel">
             <p className="panel-title">账号与安全</p>
             <p className="panel-sub">管理邮箱、GitHub 授权与登录方式。</p>
-            <div className="field" style={{ marginTop: "16px" }}>
+            <div className="field">
               <label>昵称</label>
               <input
                 type="text"
@@ -223,7 +223,7 @@ export default function Settings() {
           <div className="panel" ref={channelRef}>
             <p className="panel-title">推送渠道</p>
             <p className="panel-sub">为每个用户绑定自己的企微机器人或公众号。</p>
-            <div className="tab-switch" style={{ marginTop: "16px" }}>
+            <div className="tab-switch">
               <button
                 className={activeChannel === "wecom" ? "active" : ""}
                 onClick={() => setActiveChannel("wecom")}
@@ -342,7 +342,7 @@ export default function Settings() {
           <div className="panel">
             <p className="panel-title">推送时间</p>
             <p className="panel-sub">支持按用户自定义时间推送。</p>
-            <div className="field" style={{ marginTop: "16px" }}>
+            <div className="field">
               <label>每天推送时间</label>
               <input
                 type="time"
@@ -376,7 +376,7 @@ export default function Settings() {
           <div className="panel">
             <p className="panel-title">推送内容</p>
             <p className="panel-sub">选择需要推送的栏目与关键词。</p>
-            <div className="toggle-grid" style={{ marginTop: "16px" }}>
+            <div className="toggle-grid">
               {defaultTopics.map((topic) => (
                 <button
                   key={topic.key}
@@ -388,7 +388,7 @@ export default function Settings() {
                 </button>
               ))}
             </div>
-            <div className="field" style={{ marginTop: "16px" }}>
+            <div className="field">
               <label>关键词过滤</label>
               <input
                 type="text"
