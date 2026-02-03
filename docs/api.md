@@ -23,6 +23,7 @@
 | 获取周榜 | GET | /api/trending | language, q, period, limit | list |
 | 获取周榜（别名） | GET | /api/weekly | language, q, limit | list |
 | AI 资讯流 | GET | /api/ai | category, q, limit | list |
+| 简报预览 | GET | /api/digest/preview | topics, keywords | text |
 | 保存企微通道 | POST | /api/channels/wecom | name, webhook, active | - |
 | 保存公众号通道 | POST | /api/channels/wechat | appId, appSecret, templateId, openids, templateJson | - |
 | 测试推送 | POST | /api/channels/:type/test | - | 发送结果 |
@@ -119,6 +120,23 @@
 | category | string | ❌ | all/research/product/opensource | "research" |
 | q | string | ❌ | 关键词搜索 | "LLM" |
 | limit | number | ❌ | 返回条数 | 20 |
+
+### 简报预览
+**请求信息**
+- **路径**: `GET /api/digest/preview`
+- **权限**: 无
+- **描述**: 生成简报文本预览
+
+**请求参数**
+| 参数名 | 类型 | 必填 | 说明 | 示例 |
+|--------|------|------|------|------|
+| topics | string | ❌ | 逗号分隔 topics | "weekly,ai" |
+| keywords | string | ❌ | 关键词 | "LLM,Agent" |
+
+**响应数据**
+| 字段名 | 类型 | 说明 | 示例 |
+|--------|------|------|------|
+| text | string | 简报内容 | "【AI 机器人周报】..." |
 
 **响应数据**
 | 字段名 | 类型 | 说明 | 示例 |
