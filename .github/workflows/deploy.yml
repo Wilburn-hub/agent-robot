@@ -39,7 +39,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
-          source: "./*"
+          source: "server.js,src/,public/,package.json,package-lock.json,ecosystem.config.js"
           target: ${{ secrets.DEPLOY_PATH }}
           strip_components: 0
           overwrite: true
@@ -53,7 +53,10 @@ jobs:
           script: |
             cd ${{ secrets.DEPLOY_PATH }}
             
-            # 安装生产环境依赖（包含 pm2）
+            # 清理不需要的文件（如果之前部署带上了的话）
+            rm -rf web .git
+            
+            # 安装生产环境依赖
             npm install --production
             npm install pm2 -g || echo "pm2 already installed"
             
