@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Topbar from "../components/Topbar";
 import { API } from "../lib/api";
 
@@ -16,6 +16,7 @@ export default function Settings() {
   const [wecom, setWecom] = useState({ name: "", webhook: "", active: true });
   const [wechat, setWechat] = useState({ appId: "", appSecret: "", templateId: "", openids: "", templateJson: "", active: true });
   const [activeChannel, setActiveChannel] = useState("wecom");
+  const channelRef = useRef(null);
 
   useEffect(() => {
     async function load() {
@@ -74,6 +75,17 @@ export default function Settings() {
       }
     }
     load();
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const channel = params.get("channel");
+    if (channel === "wechat" || channel === "wecom") {
+      setActiveChannel(channel);
+      setTimeout(() => {
+        channelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 200);
+    }
   }, []);
 
   const toggleTopic = (key) => {
@@ -208,7 +220,7 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="panel">
+          <div className="panel" ref={channelRef}>
             <p className="panel-title">推送渠道</p>
             <p className="panel-sub">为每个用户绑定自己的企微机器人或公众号。</p>
             <div className="tab-switch" style={{ marginTop: "16px" }}>

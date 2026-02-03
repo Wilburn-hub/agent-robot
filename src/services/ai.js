@@ -53,8 +53,23 @@ function getLatestAi(limit = 20) {
     .all(limit);
 }
 
+function classifyAiItem(item) {
+  const source = (item.source || "").toLowerCase();
+  if (source.includes("arxiv") || source.includes("paper") || source.includes("research")) {
+    return "research";
+  }
+  if (source.includes("hugging") || source.includes("open source") || source.includes("github")) {
+    return "opensource";
+  }
+  if (source.includes("openai") || source.includes("anthropic") || source.includes("product")) {
+    return "product";
+  }
+  return "ai";
+}
+
 module.exports = {
   fetchAiFeeds,
   getLatestAi,
   defaultFeeds,
+  classifyAiItem,
 };

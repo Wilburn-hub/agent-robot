@@ -1,10 +1,16 @@
-import { useMemo } from "react";
 import { API } from "../lib/api";
 
-export default function Topbar({ variant = "home" }) {
-  const isAuthed = useMemo(() => Boolean(API.getToken()), []);
+export default function Topbar({ variant = "home", searchValue = "", onSearchChange, onSearchSubmit }) {
+  const isAuthed = Boolean(API.getToken());
   const authLink = isAuthed ? "/settings" : "/auth";
   const authLabel = isAuthed ? "设置中心" : "登录";
+  const navItems = [
+    { href: "/#weekly", label: "每周热度" },
+    { href: "/#trending", label: "趋势排行" },
+    { href: "/#ai", label: "AI 雷达" },
+    { href: "/#push", label: "企微推送" },
+    { href: "/settings", label: "设置中心" },
+  ];
 
   return (
     <header className="topbar">
@@ -16,17 +22,27 @@ export default function Topbar({ variant = "home" }) {
         </div>
       </div>
       <nav className="nav">
-        <a href="/#weekly">每周热度</a>
-        <a href="/#trending">趋势排行</a>
-        <a href="/#ai">AI 雷达</a>
-        <a href="/#push">企微推送</a>
-        <a href="/settings">设置中心</a>
+        {navItems.map((item) => (
+          <a key={item.href} href={item.href}>
+            {item.label}
+          </a>
+        ))}
       </nav>
       {variant === "home" && (
         <div className="top-actions">
           <div className="search">
             <span className="dot"></span>
-            <input type="text" placeholder="搜索仓库 / 话题" />
+            <input
+              type="text"
+              placeholder="搜索仓库 / 话题"
+              value={searchValue}
+              onChange={(event) => onSearchChange?.(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  onSearchSubmit?.();
+                }
+              }}
+            />
           </div>
           <a className="ghost" href={authLink}>
             {authLabel}

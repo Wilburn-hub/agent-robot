@@ -1,47 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Topbar from "../components/Topbar";
 import { API } from "../lib/api";
 
-const fallbackTrending = [
-  {
-    rank: "01",
-    name: "nova-vision",
-    desc: "支持边缘推理的实时多模态 Agent 框架。",
-    lang: "TypeScript",
-    stars: "32.8k",
-    delta: "+2.4k",
-  },
-  {
-    rank: "02",
-    name: "atlas-q",
-    desc: "面向端侧推理管线的量化 LLM 工具箱。",
-    lang: "Python",
-    stars: "21.1k",
-    delta: "+1.8k",
-  },
-  {
-    rank: "03",
-    name: "grid-ops",
-    desc: "支持碳感知路由的 GPU 集群调度系统。",
-    lang: "Go",
-    stars: "18.7k",
-    delta: "+1.4k",
-  },
-  {
-    rank: "04",
-    name: "spectra-craft",
-    desc: "具备一致角色控制的生成式视频引擎。",
-    lang: "Rust",
-    stars: "15.9k",
-    delta: "+1.1k",
-  },
-];
 
-const fallbackAi = [
-  { time: "09:20", title: "长上下文检索基准发布", source: "研究", tag: "研究" },
-  { time: "08:45", title: "边缘 Agent 运行时吞吐提升 2 倍", source: "开源", tag: "开源" },
-  { time: "08:05", title: "多模态安全过滤器发布", source: "产品", tag: "产品" },
-  { time: "07:50", title: "Prompt 编排 DSL 正式开源", source: "研究", tag: "研究" },
+const languageFilters = ["全部", "TypeScript", "Python", "Rust"];
+const periodFilters = [
+  { key: "weekly", label: "本周" },
+  { key: "lastweek", label: "上周" },
+  { key: "monthly", label: "30 天" },
+];
+const aiFilters = [
+  { key: "all", label: "全部" },
+  { key: "research", label: "研究" },
+  { key: "product", label: "产品" },
+  { key: "opensource", label: "开源" },
 ];
 
 function formatCompactNumber(value) {
@@ -57,34 +29,128 @@ function formatTime(value) {
   return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+function classifyAiTag(item) {
+  const source = (item.source || "").toLowerCase();
+  if (source.includes("arxiv") || source.includes("paper") || source.includes("research")) {
+    return "研究";
+  }
+  if (source.includes("hugging") || source.includes("open source") || source.includes("github")) {
+    return "开源";
+  }
+  if (source.includes("openai") || source.includes("anthropic") || source.includes("product")) {
+    return "产品";
+  }
+  return item.tag || "AI";
+}
+
+function buildQuery(params) {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      searchParams.set(key, value);
+    }
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 export default function Home() {
   const [trending, setTrending] = useState([]);
+  const [weekly, setWeekly] = useState([]);
   const [aiItems, setAiItems] = useState([]);
+  const [searchText, setSearchText] = useState("");
+  const [language, setLanguage] = useState("全部");
+  const [period, setPeriod] = useState("weekly");
+  const [aiCategory, setAiCategory] = useState("all");
+  const [digestOpen, setDigestOpen] = useState(false);
+  const [digestText, setDigestText] = useState("");
+  const [digestLoading, setDigestLoading] = useState(false);
+  const weeklyRef = useRef(null);
+
+  const debouncedSearch = useMemo(() => searchText.trim(), [searchText]);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const trendingRes = await API.request("/api/trending");
-        setTrending(trendingRes.data.list || []);
-      } catch (error) {
-        setTrending([]);
-      }
-      try {
-        const aiRes = await API.request("/api/ai");
-        setAiItems(aiRes.data.list || []);
-      } catch (error) {
-        setAiItems([]);
-      }
-    }
-    load();
-  }, []);
+    const timer = setTimeout(() => {
+      async function load() {
+        const queryLanguage = language === "全部" ? "" : language;
+        const keyword = debouncedSearch;
 
-  const trendingData = trending.length ? trending : fallbackTrending;
-  const aiData = aiItems.length ? aiItems : fallbackAi;
+        try {
+          const weeklyRes = await API.request(
+            `/api/weekly${buildQuery({ language: queryLanguage, q: keyword, limit: "3" })}`
+          );
+          setWeekly(weeklyRes.data.list || []);
+        } catch (error) {
+          setWeekly([]);
+        }
+
+        try {
+          const trendingRes = await API.request(
+            `/api/trending${buildQuery({ language: queryLanguage, q: keyword, period })}`
+          );
+          setTrending(trendingRes.data.list || []);
+        } catch (error) {
+          setTrending([]);
+        }
+
+        try {
+          const aiRes = await API.request(
+            `/api/ai${buildQuery({ q: keyword, category: aiCategory === "all" ? "" : aiCategory })}`
+          );
+          setAiItems(aiRes.data.list || []);
+        } catch (error) {
+          setAiItems([]);
+        }
+      }
+      load();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [language, period, aiCategory, debouncedSearch]);
+
+  const weeklyData = weekly;
+  const trendingData = trending;
+  const aiData = aiItems;
+
+  const handleViewWeekly = () => {
+    setPeriod("weekly");
+    setLanguage("全部");
+    requestAnimationFrame(() => {
+      weeklyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const handleGenerateDigest = async () => {
+    try {
+      setDigestLoading(true);
+      const res = await API.request(
+        `/api/digest/preview${buildQuery({ topics: "weekly,ai", keywords: debouncedSearch })}`
+      );
+      setDigestText(res.data.text || "");
+      setDigestOpen(true);
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setDigestLoading(false);
+    }
+  };
+
+  const handleConnectRobot = () => {
+    window.location.href = "/settings?channel=wecom";
+  };
+
+  const handleSearchSubmit = () => {
+    setSearchText((prev) => prev.trim());
+  };
 
   return (
     <>
-      <Topbar variant="home" />
+      <Topbar
+        variant="home"
+        searchValue={searchText}
+        onSearchChange={setSearchText}
+        onSearchSubmit={handleSearchSubmit}
+      />
       <main>
         <section className="hero">
           <div className="hero-left">
@@ -95,8 +161,10 @@ export default function Home() {
               用于快速扫读、深度追踪，并支持企微/公众号自动推送。
             </p>
             <div className="hero-actions">
-              <button className="primary">查看本周</button>
-              <button className="ghost">生成简报</button>
+              <button className="primary" onClick={handleViewWeekly}>查看本周</button>
+              <button className="ghost" onClick={handleGenerateDigest} disabled={digestLoading}>
+                {digestLoading ? "生成中..." : "生成简报"}
+              </button>
             </div>
             <div className="hero-stats">
               <div>
@@ -141,60 +209,50 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="weekly" className="weekly">
+        <section id="weekly" className="weekly" ref={weeklyRef}>
           <div className="section-head">
             <div>
               <p className="section-title">每周热度指数</p>
               <p className="section-sub">跨语言与框架的热度动量排行。</p>
             </div>
             <div className="filters">
-              <button className="filter active">全部</button>
-              <button className="filter">TypeScript</button>
-              <button className="filter">Python</button>
-              <button className="filter">Rust</button>
+              {languageFilters.map((item) => (
+                <button
+                  key={item}
+                  className={`filter ${language === item ? "active" : ""}`}
+                  onClick={() => setLanguage(item)}
+                >
+                  {item}
+                </button>
+              ))}
             </div>
           </div>
           <div className="weekly-grid">
-            <div className="weekly-card">
-              <div className="weekly-meta">
-                <p className="weekly-rank">#01</p>
-                <span className="chip">+2,831</span>
-              </div>
-              <h3>cosmic-rag</h3>
-              <p className="weekly-desc">RAG 管线升级：多 Agent 协作 + 长上下文追踪。</p>
-              <div className="weekly-tags">
-                <span>Rust</span>
-                <span>Agents</span>
-                <span>Infra</span>
-              </div>
-            </div>
-            <div className="weekly-card featured">
-              <div className="weekly-meta">
-                <p className="weekly-rank">#02</p>
-                <span className="chip">+2,002</span>
-              </div>
-              <h3>reactor-ops</h3>
-              <p className="weekly-desc">边缘 AI 运维驾驶舱：日志、告警、模型热区。</p>
-              <div className="weekly-tags">
-                <span>TypeScript</span>
-                <span>Edge</span>
-                <span>Telemetry</span>
-              </div>
-            </div>
-            <div className="weekly-card">
-              <div className="weekly-meta">
-                <p className="weekly-rank">#03</p>
-                <span className="chip">+1,472</span>
-              </div>
-              <h3>quantum-cache</h3>
-              <p className="weekly-desc">超低延迟 LLM Cache：混合向量 + KV 策略。</p>
-              <div className="weekly-tags">
-                <span>Go</span>
-                <span>LLM</span>
-                <span>Storage</span>
-              </div>
-            </div>
+            {weeklyData.map((item, index) => {
+              const title = `${item.owner}/${item.name}`;
+              const desc = item.description || "暂无描述";
+              const delta = `+${formatCompactNumber(item.stars_delta)}`;
+              const tags = [item.language || "AI", "Weekly", "Trending"];
+              return (
+                <div key={`${title}-${index}`} className={`weekly-card ${index === 1 ? "featured" : ""}`}>
+                  <div className="weekly-meta">
+                    <p className="weekly-rank">#{String(index + 1).padStart(2, "0")}</p>
+                    <span className="chip">{delta}</span>
+                  </div>
+                  <h3>{title}</h3>
+                  <p className="weekly-desc">{desc}</p>
+                  <div className="weekly-tags">
+                    {tags.map((tag) => (
+                      <span key={`${title}-${tag}`}>{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
+          {!weeklyData.length && (
+            <p className="empty-state">暂无匹配的周度热度数据</p>
+          )}
         </section>
 
         <section id="trending" className="trending">
@@ -204,45 +262,36 @@ export default function Home() {
               <p className="section-sub">按周度势能排序，而非原始星标。</p>
             </div>
             <div className="segment">
-              <button className="segment-btn active">本周</button>
-              <button className="segment-btn">上周</button>
-              <button className="segment-btn">30 天</button>
+              {periodFilters.map((item) => (
+                <button
+                  key={item.key}
+                  className={`segment-btn ${period === item.key ? "active" : ""}`}
+                  onClick={() => setPeriod(item.key)}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
           </div>
           <div className="trending-list">
-            {trendingData.map((item, index) => {
-              if (item.owner) {
-                return (
-                  <div className="trending-card" key={`${item.owner}-${item.name}`}>
-                    <div className="trending-rank">#{String(index + 1).padStart(2, "0")}</div>
-                    <div className="trending-meta">
-                      <h3>{item.owner}/{item.name}</h3>
-                      <p>{item.description || "暂无描述"}</p>
-                    </div>
-                    <div className="trending-stats">
-                      <span>{item.language || "未知"}</span>
-                      <span>{formatCompactNumber(item.stars)} 星标</span>
-                      <span>+{formatCompactNumber(item.stars_delta)} 本周</span>
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <div className="trending-card" key={item.rank}>
-                  <div className="trending-rank">#{item.rank}</div>
-                  <div className="trending-meta">
-                    <h3>{item.name}</h3>
-                    <p>{item.desc}</p>
-                  </div>
-                  <div className="trending-stats">
-                    <span>{item.lang}</span>
-                    <span>{item.stars} 星标</span>
-                    <span>{item.delta} 本周</span>
-                  </div>
+            {trendingData.map((item, index) => (
+              <div className="trending-card" key={`${item.owner}-${item.name}`}>
+                <div className="trending-rank">#{String(index + 1).padStart(2, "0")}</div>
+                <div className="trending-meta">
+                  <h3>{item.owner}/{item.name}</h3>
+                  <p>{item.description || "暂无描述"}</p>
                 </div>
-              );
-            })}
+                <div className="trending-stats">
+                  <span>{item.language || "未知"}</span>
+                  <span>{formatCompactNumber(item.stars)} 星标</span>
+                  <span>+{formatCompactNumber(item.stars_delta)} 本周</span>
+                </div>
+              </div>
+            ))}
           </div>
+          {!trendingData.length && (
+            <p className="empty-state">暂无匹配的仓库数据</p>
+          )}
         </section>
 
         <section id="ai" className="ai">
@@ -252,10 +301,15 @@ export default function Home() {
               <p className="section-sub">研究、工具、Agent 生态与平台动态。</p>
             </div>
             <div className="filters">
-              <button className="filter active">全部</button>
-              <button className="filter">研究</button>
-              <button className="filter">产品</button>
-              <button className="filter">开源</button>
+              {aiFilters.map((item) => (
+                <button
+                  key={item.key}
+                  className={`filter ${aiCategory === item.key ? "active" : ""}`}
+                  onClick={() => setAiCategory(item.key)}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
           </div>
           <div className="ai-feed">
@@ -266,10 +320,13 @@ export default function Home() {
                   <div className="ai-title">{item.title}</div>
                   <div className="ai-sub">{item.source}</div>
                 </div>
-                <div className="ai-tag">{item.tag || "AI"}</div>
+                <div className="ai-tag">{classifyAiTag(item)}</div>
               </div>
             ))}
           </div>
+          {!aiData.length && (
+            <p className="empty-state">暂无匹配 AI 资讯</p>
+          )}
         </section>
 
         <section id="push" className="push">
@@ -287,7 +344,7 @@ export default function Home() {
                 <p className="stat-value">3 分钟</p>
                 <p className="stat-label">构建耗时</p>
               </div>
-              <button className="primary">连接机器人</button>
+              <button className="primary" onClick={handleConnectRobot}>连接机器人</button>
             </div>
           </div>
         </section>
@@ -295,6 +352,33 @@ export default function Home() {
       <footer className="footer">
         <p>来源：GitHub Trending、精选 AI 资讯源、自定义评分。面向多端性能优化。</p>
       </footer>
+
+      {digestOpen && (
+        <div className="modal-mask" role="dialog" aria-modal="true">
+          <div className="modal">
+            <div className="modal-head">
+              <div>
+                <p className="section-title">AI 机器人周报 · 预览</p>
+                <p className="section-sub">基于当前筛选与关键词生成</p>
+              </div>
+              <button className="ghost small" onClick={() => setDigestOpen(false)}>关闭</button>
+            </div>
+            <pre className="modal-body">{digestText || "暂无内容"}</pre>
+            <div className="modal-actions">
+              <button
+                className="ghost"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(digestText || "");
+                  alert("已复制到剪贴板");
+                }}
+              >
+                复制内容
+              </button>
+              <button className="primary" onClick={handleConnectRobot}>去绑定推送</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

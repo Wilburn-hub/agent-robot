@@ -40,7 +40,7 @@ async function getWeChatToken(appId, appSecret) {
   return token;
 }
 
-async function sendWeChatTemplateMessage(channel) {
+async function sendWeChatTemplateMessage(channel, contentConfig) {
   const { app_id: appId, app_secret: appSecret, template_id: templateId, openids, template_json } = channel;
   if (!templateId) {
     throw new Error("模板消息 ID 未配置");
@@ -55,13 +55,14 @@ async function sendWeChatTemplateMessage(channel) {
 
   const token = await getWeChatToken(appId, appSecret);
   const url = `https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=${token}`;
-  const digest = buildDigestSummary();
+  const digest = buildDigestSummary(contentConfig);
 
+  const aiTitles = (digest.aiItems.length ? digest.aiItems : digest.papers).map((item) => item.title).join(" / ");
   let templateData = {
     title: { value: "AI 机器人周报" },
-    keyword1: { value: digest.trending.map((item) => item.name).join(" / ") },
-    keyword2: { value: digest.aiItems.map((item) => item.title).join(" / ") },
-    remark: { value: "点击查看完整简报" },
+    keyword1: { value: digest.trending.map((item) => item.name).join(" / ") || "本期无热度项目" },
+    keyword2: { value: aiTitles || "本期无 AI 更新" },
+    remark: { value: "点击查看完整周报" },
   };
 
   if (template_json) {
@@ -85,13 +86,13 @@ async function sendWeChatTemplateMessage(channel) {
   return results;
 }
 
-async function sendDigestByChannel(channel) {
+async function sendDigestByChannel(channel, contentConfig = {}) {
   if (channel.type === "wecom") {
-    const text = buildDigestText();
+    const text = buildDigestText(contentConfig);
     return sendWecomMessage(channel.webhook, text);
   }
   if (channel.type === "wechat") {
-    return sendWeChatTemplateMessage(channel);
+    return sendWeChatTemplateMessage(channel, contentConfig);
   }
   throw new Error("未知推送通道");
 }

@@ -75,8 +75,17 @@ router.post("/channels/:type/test", requireAuth, async (req, res) => {
   if (!channel) {
     return res.status(404).json({ code: 404, msg: "通道不存在" });
   }
+  let contentConfig = {};
+  const schedule = db.prepare("SELECT * FROM push_schedule WHERE user_id = ?").get(req.user.id);
+  if (schedule && schedule.content_json) {
+    try {
+      contentConfig = JSON.parse(schedule.content_json);
+    } catch (error) {
+      contentConfig = {};
+    }
+  }
   try {
-    const result = await sendDigestByChannel(channel);
+    const result = await sendDigestByChannel(channel, contentConfig);
     return res.json({ code: 200, msg: "success", data: result });
   } catch (error) {
     return res.status(400).json({ code: 400, msg: error.message });

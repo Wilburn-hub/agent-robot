@@ -32,6 +32,14 @@ function startScheduler() {
         const userChannels = db
           .prepare("SELECT * FROM push_channels WHERE user_id = ? AND active = 1")
           .all(schedule.user_id);
+        let contentConfig = {};
+        if (schedule.content_json) {
+          try {
+            contentConfig = JSON.parse(schedule.content_json);
+          } catch (error) {
+            contentConfig = {};
+          }
+        }
         for (const channel of userChannels) {
           const existing = db
             .prepare(
@@ -42,7 +50,7 @@ function startScheduler() {
             continue;
           }
           try {
-            await sendDigestByChannel(channel);
+            await sendDigestByChannel(channel, contentConfig);
             db.prepare("INSERT INTO push_logs (user_id, channel_id, status) VALUES (?, ?, ?)").run(
               schedule.user_id,
               channel.id,

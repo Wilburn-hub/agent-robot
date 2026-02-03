@@ -1,6 +1,8 @@
 const express = require("express");
-const { fetchGitHubTrending, getLatestTrending } = require("../services/github");
-const { fetchAiFeeds, getLatestAi } = require("../services/ai");
+const db = require("../db");
+const { fetchGitHubTrending } = require("../services/github");
+const { fetchAiFeeds, classifyAiItem } = require("../services/ai");
+const { buildDigestText } = require("../services/digest");
 
 const router = express.Router();
 
@@ -8,19 +10,131 @@ router.get("/health", (req, res) => {
   res.json({ code: 200, msg: "ok" });
 });
 
+function getLatestSnapshotDate(offset = 0) {
+  const rows = db
+    .prepare("SELECT DISTINCT snapshot_date FROM trending_repos ORDER BY snapshot_date DESC")
+    .all();
+  return rows[offset]?.snapshot_date || rows[0]?.snapshot_date || null;
+}
+
+function buildSearchClause({ q, language }) {
+  const clauses = [];
+  const params = [];
+  if (language) {
+    clauses.push("language = ?");
+    params.push(language);
+  }
+  if (q) {
+    clauses.push("(owner LIKE ? OR name LIKE ? OR description LIKE ?)");
+    params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+  }
+  return { clause: clauses.length ? `AND ${clauses.join(" AND ")}` : "", params };
+}
+
 router.get("/trending", (req, res) => {
-  const list = getLatestTrending();
-  res.json({ code: 200, msg: "success", data: { list } });
+  const language = (req.query.language || "").trim();
+  const q = (req.query.q || "").trim();
+  const period = req.query.period || "weekly";
+  const limit = req.query.limit || "20";
+  const queryLimit = Math.min(parseInt(limit, 10) || 20, 100);
+  const { clause, params } = buildSearchClause({ q, language });
+
+  if (period === "monthly") {
+    const fromDate = db.prepare("SELECT date('now', '-30 day') AS date").get().date;
+    const list = db
+      .prepare(
+        `SELECT owner, name, url, description, language,
+                MAX(stars) AS stars,
+                MAX(forks) AS forks,
+                SUM(stars_delta) AS stars_delta,
+                MAX(snapshot_date) AS snapshot_date
+         FROM trending_repos
+         WHERE snapshot_date >= ? ${clause}
+         GROUP BY owner, name, url, description, language
+         ORDER BY stars_delta DESC, stars DESC
+         LIMIT ?`
+      )
+      .all(fromDate, ...params, queryLimit);
+    return res.json({ code: 200, msg: "success", data: { list } });
+  }
+
+  const snapshotDate = period === "lastweek" ? getLatestSnapshotDate(1) : getLatestSnapshotDate(0);
+  if (!snapshotDate) {
+    return res.json({ code: 200, msg: "success", data: { list: [] } });
+  }
+  const list = db
+    .prepare(
+      `SELECT * FROM trending_repos
+       WHERE snapshot_date = ? ${clause}
+       ORDER BY stars_delta DESC, stars DESC
+       LIMIT ?`
+    )
+    .all(snapshotDate, ...params, queryLimit);
+  return res.json({ code: 200, msg: "success", data: { list } });
 });
 
 router.get("/weekly", (req, res) => {
-  const list = getLatestTrending();
-  res.json({ code: 200, msg: "success", data: { list } });
+  const language = (req.query.language || "").trim();
+  const q = (req.query.q || "").trim();
+  const limit = req.query.limit || "6";
+  const queryLimit = Math.min(parseInt(limit, 10) || 6, 50);
+  const snapshotDate = getLatestSnapshotDate(0);
+  if (!snapshotDate) {
+    return res.json({ code: 200, msg: "success", data: { list: [] } });
+  }
+  const { clause, params } = buildSearchClause({ q, language });
+  const list = db
+    .prepare(
+      `SELECT * FROM trending_repos
+       WHERE snapshot_date = ? ${clause}
+       ORDER BY stars_delta DESC, stars DESC
+       LIMIT ?`
+    )
+    .all(snapshotDate, ...params, queryLimit);
+  return res.json({ code: 200, msg: "success", data: { list } });
 });
 
 router.get("/ai", (req, res) => {
-  const list = getLatestAi(20);
-  res.json({ code: 200, msg: "success", data: { list } });
+  const q = (req.query.q || "").trim();
+  const category = req.query.category || "all";
+  const limit = req.query.limit || "20";
+  const queryLimit = Math.min(parseInt(limit, 10) || 20, 100);
+  const clauses = [];
+  const params = [];
+  if (q) {
+    clauses.push("(title LIKE ? OR summary LIKE ? OR source LIKE ?)");
+    params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+  }
+  const clause = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const rows = db
+    .prepare(
+      `SELECT * FROM ai_items ${clause}
+       ORDER BY datetime(published_at) DESC, id DESC
+       LIMIT ?`
+    )
+    .all(...params, queryLimit * 2);
+
+  const list = rows.filter((item) => {
+    if (category === "all") return true;
+    const tag = classifyAiItem(item);
+    if (category === "research") return tag === "research";
+    if (category === "product") return tag === "product";
+    if (category === "opensource") return tag === "opensource";
+    return true;
+  }).slice(0, queryLimit);
+
+  return res.json({ code: 200, msg: "success", data: { list } });
+});
+
+router.get("/digest/preview", (req, res) => {
+  const topicsParam = (req.query.topics || "").trim();
+  const keywords = (req.query.keywords || "").trim();
+  const topics = topicsParam
+    ? topicsParam.split(",").map((item) => item.trim()).filter(Boolean)
+    : ["weekly", "ai"];
+
+  const text = buildDigestText({ topics, keywords });
+  return res.json({ code: 200, msg: "success", data: { text } });
 });
 
 router.post("/admin/refresh", async (req, res) => {
