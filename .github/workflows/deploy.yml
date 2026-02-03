@@ -1,0 +1,64 @@
+name: Deploy Agent Robot
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  DEPLOY_PATH: /www/wwwroot/agent-robot # 默认路径，建议在 Secrets 中自定义
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 📗 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 安装后端依赖
+        run: npm install
+
+      - name: 🔨 构建前端页面
+        run: |
+          cd web
+          npm install
+          npm run build
+          cd ..
+
+      - name: 🚀 部署到服务器
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          source: "./*"
+          target: ${{ secrets.DEPLOY_PATH }}
+          strip_components: 0
+          overwrite: true
+
+      - name: 🔄 重启后端服务
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            # 安装生产环境依赖
+            npm install --production
+            
+            # 使用 pm2 管理进程
+            pm2 restart ecosystem.config.js || pm2 start ecosystem.config.js
+            pm2 save
+            
+            # 简单的状态检查
+            echo "✅ 部署完成并尝试重启服务"
+            pm2 status agent-robot

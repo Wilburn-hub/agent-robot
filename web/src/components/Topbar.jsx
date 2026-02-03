@@ -16,7 +16,24 @@ export default function Topbar({ variant = "home", searchValue = "", onSearchCha
     <header className="topbar">
       <div className="brand">
         <a className="brand-icon" href="/" aria-label="返回首页">
-          <span className="brand-mark"></span>
+          <svg className="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
+            <defs>
+              <linearGradient id="bolt-gradient" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#7B5CFF" />
+                <stop offset="55%" stopColor="#6BE1FF" />
+                <stop offset="100%" stopColor="#F6D365" />
+              </linearGradient>
+              <linearGradient id="spark-gradient" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FF66C4" />
+                <stop offset="100%" stopColor="#7B5CFF" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M27.6 4L8.6 28.8H21l-2.2 15.2L39.4 20H27l2.6-16z"
+              fill="url(#bolt-gradient)"
+            />
+            <circle cx="13" cy="12" r="4.2" fill="url(#spark-gradient)" />
+          </svg>
         </a>
         <div>
           <p className="brand-title">AI 机器人周报</p>

@@ -1,9 +1,21 @@
 # 实现计划（AI 机器人周报）
 
 ## 目标描述
-- 完成 AI 机器人周报的前后端可运行版本（React 前端 + Node 后端）。
-- 支持邮箱/密码登录与 GitHub OAuth。
-- 支持用户自配置企微机器人/公众号推送与定时任务。
+- 实现 AI 机器人周报的自动化部署流程（GitHub Actions + 阿里云 VPS + PM2）。
+- 参考 **GYM** 项目的成熟经验进行流水线优化（包含步骤标识、Emoji、健康检查等）。
+
+## 用户审核项
+
+> [!IMPORTANT]
+> **默认部署方案建议：**
+> 由于尚未获得具体服务器地址，我将为您配置一套通用的 **SSH 自动部署** 流水线。
+> 它会：构建前端 -> 将产物同步到服务器 -> 重启后端服务。
+> 
+> 您需要在 GitHub Repo 的 `Settings > Secrets and variables > Actions` 中配置以下常量：
+> - `DEPLOY_HOST`: 服务器 IP
+> - `DEPLOY_USER`: 登录用户名（如 root）
+> - `DEPLOY_KEY`: SSH 私钥
+> - `DEPLOY_PATH`: 项目在服务器上的绝对路径（如 /var/www/agent-robot）
 
 ## 涉及文件
 - `server.js`
@@ -63,6 +75,18 @@
 - `GET /api/settings`
 - `PUT /api/settings`
 - `POST /api/admin/refresh`
+
+### [GitHub Actions]
+
+#### [NEW] [.github/workflows/deploy.yml](file:///.github/workflows/deploy.yml)
+- **触发条件**：代码推送到 `main` 分支。
+- **工作流内容**：
+  1. **Build**: 在 GitHub Runner 中安装依赖并构建前端。
+  2. **Deploy**: 使用 `appleboy/scp-action` 将代码同步到服务器。
+  3. **Restart**: 使用 `appleboy/ssh-action` 执行 `npm install` 并用 `pm2 restart` 刷新应用。
+
+#### [NEW] [生态文件]
+- **ecosystem.config.js**: 配置 PM2 启动参数（集群模式、应用名称、环境变量接口）。
 
 ## 本次变更（雷达真实数据）
 - 页面：`web/src/pages/Home.jsx`
