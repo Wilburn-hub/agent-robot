@@ -51,17 +51,16 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
-            # 加载环境变量以确保能找到 pm2
-            source ~/.bashrc || source ~/.profile
-            
             cd ${{ secrets.DEPLOY_PATH }}
-            # 安装生产环境依赖
-            npm install --production
             
-            # 使用 pm2 管理进程
-            pm2 restart ecosystem.config.js || pm2 start ecosystem.config.js
-            pm2 save
+            # 安装生产环境依赖（包含 pm2）
+            npm install --production
+            npm install pm2 -g || echo "pm2 already installed"
+            
+            # 使用 npx 调用 pm2（自动查找路径）
+            npx pm2 restart ecosystem.config.js || npx pm2 start ecosystem.config.js
+            npx pm2 save
             
             # 简单的状态检查
             echo "✅ 部署完成并尝试重启服务"
-            pm2 status agent-robot
+            npx pm2 status agent-robot
