@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:web\"",
-    "dev:server": "node server.js",
+    "dev:server": "nodemon server.js",
     "dev:web": "npm --prefix web run dev",
     "build:web": "npm --prefix web run build",
     "build": "npm run build:web",
@@ -27,5 +27,8 @@
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",
     "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
   }
 }

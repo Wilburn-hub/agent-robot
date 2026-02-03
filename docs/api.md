@@ -24,6 +24,7 @@
 | 获取周榜（别名） | GET | /api/weekly | language, q, limit | list |
 | AI 资讯流 | GET | /api/ai | category, q, limit | list |
 | 简报预览 | GET | /api/digest/preview | topics, keywords | text |
+| 简报测试推送 | POST | /api/digest/send | - | text, results |
 | 保存企微通道 | POST | /api/channels/wecom | name, webhook, active | - |
 | 保存公众号通道 | POST | /api/channels/wechat | appId, appSecret, templateId, openids, templateJson | - |
 | 测试推送 | POST | /api/channels/:type/test | - | 发送结果 |
@@ -137,6 +138,18 @@
 | 字段名 | 类型 | 说明 | 示例 |
 |--------|------|------|------|
 | text | string | 简报内容 | "【AI 机器人周报】..." |
+
+### 简报测试推送
+**请求信息**
+- **路径**: `POST /api/digest/send`
+- **权限**: 需登录
+- **描述**: 按用户配置通道发送一次测试推送
+
+**响应数据**
+| 字段名 | 类型 | 说明 | 示例 |
+|--------|------|------|------|
+| text | string | 简报内容 | "【AI 机器人周报】..." |
+| results | array | 推送结果 | [{channel:"wecom",status:"success"}] |
 
 **响应数据**
 | 字段名 | 类型 | 说明 | 示例 |

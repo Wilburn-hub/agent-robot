@@ -70,6 +70,14 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS translations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hash TEXT UNIQUE,
+    source_text TEXT,
+    target_text TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS push_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,

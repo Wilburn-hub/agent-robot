@@ -3,6 +3,8 @@ const db = require("../db");
 const { fetchGitHubTrending } = require("../services/github");
 const { fetchAiFeeds, classifyAiItem } = require("../services/ai");
 const { buildDigestText } = require("../services/digest");
+const { sendDigestByChannel } = require("../services/push");
+const { requireAuth } = require("../utils/auth");
 
 const router = express.Router();
 
@@ -126,15 +128,50 @@ router.get("/ai", (req, res) => {
   return res.json({ code: 200, msg: "success", data: { list } });
 });
 
-router.get("/digest/preview", (req, res) => {
+router.get("/digest/preview", async (req, res) => {
   const topicsParam = (req.query.topics || "").trim();
   const keywords = (req.query.keywords || "").trim();
   const topics = topicsParam
     ? topicsParam.split(",").map((item) => item.trim()).filter(Boolean)
     : ["weekly", "ai"];
 
-  const text = buildDigestText({ topics, keywords });
+  const text = await buildDigestText({ topics, keywords });
   return res.json({ code: 200, msg: "success", data: { text } });
+});
+
+router.post("/digest/send", requireAuth, async (req, res) => {
+  const userId = req.user.id;
+  const schedule = db.prepare("SELECT * FROM push_schedule WHERE user_id = ?").get(userId);
+  let contentConfig = {};
+  if (schedule && schedule.content_json) {
+    try {
+      contentConfig = JSON.parse(schedule.content_json);
+    } catch (error) {
+      contentConfig = {};
+    }
+  }
+  const channels = db
+    .prepare("SELECT * FROM push_channels WHERE user_id = ? AND active = 1")
+    .all(userId);
+  if (!channels.length) {
+    return res.status(400).json({ code: 400, msg: "请先绑定推送通道" });
+  }
+
+  const text = await buildDigestText(contentConfig);
+  const results = [];
+  for (const channel of channels) {
+    try {
+      const result = await sendDigestByChannel(channel, contentConfig);
+      results.push({ channel: channel.type, status: "success", result });
+      db.prepare("INSERT INTO push_logs (user_id, channel_id, status, detail) VALUES (?, ?, ?, ?)")
+        .run(userId, channel.id, "manual", "手动触发");
+    } catch (error) {
+      results.push({ channel: channel.type, status: "failed", error: error.message });
+      db.prepare("INSERT INTO push_logs (user_id, channel_id, status, detail) VALUES (?, ?, ?, ?)")
+        .run(userId, channel.id, "failed", error.message);
+    }
+  }
+  return res.json({ code: 200, msg: "success", data: { text, results } });
 });
 
 router.post("/admin/refresh", async (req, res) => {

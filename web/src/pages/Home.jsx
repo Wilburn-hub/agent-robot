@@ -123,11 +123,21 @@ export default function Home() {
   const handleGenerateDigest = async () => {
     try {
       setDigestLoading(true);
-      const res = await API.request(
-        `/api/digest/preview${buildQuery({ topics: "weekly,ai", keywords: debouncedSearch })}`
-      );
-      setDigestText(res.data.text || "");
-      setDigestOpen(true);
+      if (API.getToken()) {
+        setDigestText("");
+      }
+      const token = API.getToken();
+      if (token) {
+        const res = await API.request("/api/digest/send", { method: "POST" });
+        setDigestText(res.data.text || "");
+        setDigestOpen(true);
+      } else {
+        const res = await API.request(
+          `/api/digest/preview${buildQuery({ topics: "weekly,ai", keywords: debouncedSearch })}`
+        );
+        setDigestText(res.data.text || "");
+        setDigestOpen(true);
+      }
     } catch (error) {
       alert(error.message);
     } finally {
@@ -359,7 +369,9 @@ export default function Home() {
             <div className="modal-head">
               <div>
                 <p className="section-title">AI 机器人周报 · 预览</p>
-                <p className="section-sub">基于当前筛选与关键词生成</p>
+                <p className="section-sub">
+                  {API.getToken() ? "已生成并触发一次测试推送" : "预览模式（登录后可一键推送）"}
+                </p>
               </div>
               <button className="ghost small" onClick={() => setDigestOpen(false)}>关闭</button>
             </div>
@@ -374,7 +386,9 @@ export default function Home() {
               >
                 复制内容
               </button>
-              <button className="primary" onClick={handleConnectRobot}>去绑定推送</button>
+              <button className="primary" onClick={handleConnectRobot}>
+                {API.getToken() ? "管理推送通道" : "去绑定推送"}
+              </button>
             </div>
           </div>
         </div>

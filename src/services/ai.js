@@ -1,7 +1,13 @@
 const Parser = require("rss-parser");
 const db = require("../db");
 
-const parser = new Parser();
+const parser = new Parser({
+  timeout: 20000,
+  headers: {
+    "User-Agent": "AI-Radar/1.0 (+https://localhost)",
+    Accept: "application/rss+xml,application/xml;q=0.9,*/*;q=0.8",
+  },
+});
 
 const defaultFeeds = [
   { name: "OpenAI Blog", url: "https://openai.com/blog/rss" },

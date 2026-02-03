@@ -8,15 +8,26 @@ async function sendWecomMessage(webhook, text) {
     throw new Error("Webhook 未配置");
   }
   const payload = {
-    msgtype: "text",
-    text: {
+    msgtype: "markdown",
+    markdown: {
       content: text,
     },
   };
-  const response = await axios.post(webhook, payload, {
-    headers: { "Content-Type": "application/json" },
-  });
-  return response.data;
+  try {
+    const response = await axios.post(webhook, payload, {
+      headers: { "Content-Type": "application/json" },
+    });
+    if (response.data && typeof response.data.errcode !== "undefined" && response.data.errcode !== 0) {
+      throw new Error(`企微返回错误: ${response.data.errcode} ${response.data.errmsg || ""}`.trim());
+    }
+    return response.data;
+  } catch (error) {
+    const data = error.response?.data;
+    if (data && typeof data.errcode !== "undefined") {
+      throw new Error(`企微返回错误: ${data.errcode} ${data.errmsg || ""}`.trim());
+    }
+    throw error;
+  }
 }
 
 async function getWeChatToken(appId, appSecret) {
@@ -88,7 +99,7 @@ async function sendWeChatTemplateMessage(channel, contentConfig) {
 
 async function sendDigestByChannel(channel, contentConfig = {}) {
   if (channel.type === "wecom") {
-    const text = buildDigestText(contentConfig);
+    const text = await buildDigestText(contentConfig);
     return sendWecomMessage(channel.webhook, text);
   }
   if (channel.type === "wechat") {
