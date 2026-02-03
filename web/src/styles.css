@@ -114,6 +114,14 @@ body::after {
   gap: 16px;
 }
 
+.brand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
 .brand-mark {
   width: 42px;
   height: 42px;
@@ -1016,14 +1024,40 @@ main {
 .panel > .tab-switch,
 .panel > .toggle-grid,
 .panel > .tab-panel,
-.panel > .field-row {
+.panel > .field-row,
+.panel > .panel-help {
   margin-top: 20px;
 }
 
 .panel > .panel-sub + .field,
 .panel > .panel-sub + .tab-switch,
-.panel > .panel-sub + .toggle-grid {
+.panel > .panel-sub + .toggle-grid,
+.panel > .panel-sub + .panel-help {
   margin-top: 24px;
+}
+
+.panel-help {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px dashed rgba(88, 242, 201, 0.4);
+  background: rgba(8, 12, 18, 0.6);
+}
+
+.panel-help .help-title {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: var(--font-display);
+}
+
+.panel-help .help-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
 }
 
 .tab-panel {
@@ -1043,6 +1077,25 @@ main {
   font-size: 12px;
   color: #ffd4a1;
   line-height: 1.6;
+}
+
+.source-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.source-item {
+  border-radius: 16px;
+  border: 1px solid rgba(31, 43, 61, 0.7);
+  padding: 16px;
+  background: rgba(10, 16, 24, 0.6);
+  display: grid;
+  gap: 12px;
+}
+
+.source-item .field {
+  margin-top: 0;
 }
 
 .toggle-grid {

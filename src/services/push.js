@@ -51,7 +51,7 @@ async function getWeChatToken(appId, appSecret) {
   return token;
 }
 
-async function sendWeChatTemplateMessage(channel, contentConfig) {
+async function sendWeChatTemplateMessage(channel, contentConfig, extra = {}) {
   const { app_id: appId, app_secret: appSecret, template_id: templateId, openids, template_json } = channel;
   if (!templateId) {
     throw new Error("模板消息 ID 未配置");
@@ -66,7 +66,10 @@ async function sendWeChatTemplateMessage(channel, contentConfig) {
 
   const token = await getWeChatToken(appId, appSecret);
   const url = `https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=${token}`;
-  const digest = buildDigestSummary(contentConfig);
+  const digest = buildDigestSummary({
+    ...contentConfig,
+    userId: extra.userId || channel.user_id,
+  });
 
   const aiTitles = (digest.aiItems.length ? digest.aiItems : digest.papers).map((item) => item.title).join(" / ");
   let templateData = {
@@ -97,13 +100,16 @@ async function sendWeChatTemplateMessage(channel, contentConfig) {
   return results;
 }
 
-async function sendDigestByChannel(channel, contentConfig = {}) {
+async function sendDigestByChannel(channel, contentConfig = {}, extra = {}) {
   if (channel.type === "wecom") {
-    const text = await buildDigestText(contentConfig);
+    const text = await buildDigestText({
+      ...contentConfig,
+      userId: extra.userId || channel.user_id,
+    });
     return sendWecomMessage(channel.webhook, text);
   }
   if (channel.type === "wechat") {
-    return sendWeChatTemplateMessage(channel, contentConfig);
+    return sendWeChatTemplateMessage(channel, contentConfig, extra);
   }
   throw new Error("未知推送通道");
 }

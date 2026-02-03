@@ -1,7 +1,7 @@
 const express = require("express");
 const db = require("../db");
 const { fetchGitHubTrending } = require("../services/github");
-const { fetchAiFeeds, classifyAiItem } = require("../services/ai");
+const { fetchAiFeedsForAllUsers, fetchAiFeedsForUser, classifyAiItem, getDefaultSourceUrls } = require("../services/ai");
 const { buildDigestText } = require("../services/digest");
 const { sendDigestByChannel } = require("../services/push");
 const { requireAuth } = require("../utils/auth");
@@ -103,6 +103,13 @@ router.get("/ai", (req, res) => {
   const queryLimit = Math.min(parseInt(limit, 10) || 20, 100);
   const clauses = [];
   const params = [];
+  const sourceUrls = getDefaultSourceUrls();
+  if (!sourceUrls.length) {
+    return res.json({ code: 200, msg: "success", data: { list: [] } });
+  }
+  const placeholders = sourceUrls.map(() => "?").join(", ");
+  clauses.push(`source_url IN (${placeholders})`);
+  params.push(...sourceUrls);
   if (q) {
     clauses.push("(title LIKE ? OR summary LIKE ? OR source LIKE ?)");
     params.push(`%${q}%`, `%${q}%`, `%${q}%`);
@@ -157,11 +164,12 @@ router.post("/digest/send", requireAuth, async (req, res) => {
     return res.status(400).json({ code: 400, msg: "请先绑定推送通道" });
   }
 
-  const text = await buildDigestText(contentConfig);
+  await fetchAiFeedsForUser(userId);
+  const text = await buildDigestText({ ...contentConfig, userId });
   const results = [];
   for (const channel of channels) {
     try {
-      const result = await sendDigestByChannel(channel, contentConfig);
+      const result = await sendDigestByChannel(channel, contentConfig, { userId });
       results.push({ channel: channel.type, status: "success", result });
       db.prepare("INSERT INTO push_logs (user_id, channel_id, status, detail) VALUES (?, ?, ?, ?)")
         .run(userId, channel.id, "manual", "手动触发");
@@ -180,7 +188,7 @@ router.post("/admin/refresh", async (req, res) => {
     return res.status(403).json({ code: 403, msg: "无权限" });
   }
   await fetchGitHubTrending();
-  await fetchAiFeeds();
+  await fetchAiFeedsForAllUsers();
   return res.json({ code: 200, msg: "刷新完成" });
 });
 

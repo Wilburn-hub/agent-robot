@@ -12,10 +12,18 @@ const defaultTopics = [
 export default function Settings() {
   const [account, setAccount] = useState({ name: "", email: "", github: "未绑定" });
   const [schedule, setSchedule] = useState({ time: "08:30", timezone: "Asia/Shanghai", frequency: "daily" });
-  const [content, setContent] = useState({ topics: ["weekly", "ai"], keywords: "" });
+  const [content, setContent] = useState({
+    topics: ["weekly", "ai"],
+    keywords: "",
+    aiLimit: 20,
+    trendingLimit: 5,
+    papersLimit: 5,
+  });
   const [wecom, setWecom] = useState({ name: "", webhook: "", active: true });
   const [wechat, setWechat] = useState({ appId: "", appSecret: "", templateId: "", openids: "", templateJson: "", active: true });
   const [activeChannel, setActiveChannel] = useState("wecom");
+  const [sources, setSources] = useState([]);
+  const [defaultSources, setDefaultSources] = useState([]);
   const channelRef = useRef(null);
 
   useEffect(() => {
@@ -34,7 +42,7 @@ export default function Settings() {
 
       try {
         const res = await API.request("/api/settings");
-        const { schedule: scheduleData, channels } = res.data;
+        const { schedule: scheduleData, channels, sources: sourceList, defaultSources: defaults } = res.data;
         if (scheduleData) {
           setSchedule({
             time: scheduleData.time || "08:30",
@@ -46,6 +54,9 @@ export default function Settings() {
             setContent({
               topics: parsed.topics || ["weekly", "ai"],
               keywords: parsed.keywords || "",
+              aiLimit: parsed.aiLimit || 20,
+              trendingLimit: parsed.trendingLimit || 5,
+              papersLimit: parsed.papersLimit || 5,
             });
           }
         }
@@ -70,6 +81,18 @@ export default function Settings() {
             active: Boolean(wechatChannel.active),
           });
         }
+
+        setSources(
+          Array.isArray(sourceList) && sourceList.length
+            ? sourceList.map((item) => ({
+                name: item.name || "",
+                url: item.url || "",
+                active: Boolean(item.active),
+                type: item.type || "rss",
+              }))
+            : []
+        );
+        setDefaultSources(Array.isArray(defaults) ? defaults : []);
       } catch (error) {
         alert(error.message);
       }
@@ -122,6 +145,47 @@ export default function Settings() {
         }),
       });
       alert("设置已保存");
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const addSource = () => {
+    setSources((prev) => [
+      ...prev,
+      { name: "", url: "", active: true, type: "rss" },
+    ]);
+  };
+
+  const updateSource = (index, patch) => {
+    setSources((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, ...patch } : item))
+    );
+  };
+
+  const removeSource = (index) => {
+    setSources((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const importDefaultSources = () => {
+    if (!defaultSources.length) return;
+    setSources(
+      defaultSources.map((item) => ({
+        name: item.name || "",
+        url: item.url || "",
+        active: true,
+        type: "rss",
+      }))
+    );
+  };
+
+  const saveSources = async () => {
+    try {
+      await API.request("/api/sources", {
+        method: "PUT",
+        body: JSON.stringify({ sources }),
+      });
+      alert("信息源已保存");
     } catch (error) {
       alert(error.message);
     }
@@ -223,6 +287,15 @@ export default function Settings() {
           <div className="panel" ref={channelRef}>
             <p className="panel-title">推送渠道</p>
             <p className="panel-sub">为每个用户绑定自己的企微机器人或公众号。</p>
+            <div className="panel-help">
+              <div>
+                <p className="help-title">不知道怎么填？</p>
+                <p className="help-sub">查看企微机器人与公众号推送的配置教程与官方链接。</p>
+              </div>
+              <a className="ghost small" href="/push-channels.html" target="_blank" rel="noreferrer">
+                查看教程
+              </a>
+            </div>
             <div className="tab-switch">
               <button
                 className={activeChannel === "wecom" ? "active" : ""}
@@ -374,6 +447,62 @@ export default function Settings() {
           </div>
 
           <div className="panel">
+            <p className="panel-title">信息源配置</p>
+            <p className="panel-sub">为每个用户配置自己的 RSS 信息源（默认有内置源）。</p>
+            {!sources.length ? (
+              <div className="note">当前未设置自定义源，将使用系统默认源。</div>
+            ) : null}
+            <div className="field-row">
+              <button className="ghost" type="button" onClick={addSource}>新增 RSS</button>
+              <button className="ghost" type="button" onClick={importDefaultSources}>导入默认源</button>
+            </div>
+            <div className="source-list">
+              {sources.map((source, index) => (
+                <div className="source-item" key={`${source.url}-${index}`}>
+                  <div className="field">
+                    <label>名称</label>
+                    <input
+                      type="text"
+                      placeholder="如 OpenAI Blog"
+                      value={source.name}
+                      onChange={(event) => updateSource(index, { name: event.target.value })}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>RSS 地址</label>
+                    <input
+                      type="text"
+                      placeholder="https://example.com/rss.xml"
+                      value={source.url}
+                      onChange={(event) => updateSource(index, { url: event.target.value })}
+                    />
+                  </div>
+                  <div className="field-row">
+                    <div className="field">
+                      <label>启用状态</label>
+                      <select
+                        value={source.active ? "启用" : "暂停"}
+                        onChange={(event) => updateSource(index, { active: event.target.value === "启用" })}
+                      >
+                        <option>启用</option>
+                        <option>暂停</option>
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label>操作</label>
+                      <button className="ghost" type="button" onClick={() => removeSource(index)}>移除</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="save-bar">
+              <p className="helper">系统会在推送前拉取你的 RSS 列表。</p>
+              <button className="primary" type="button" onClick={saveSources}>保存信息源</button>
+            </div>
+          </div>
+
+          <div className="panel">
             <p className="panel-title">推送内容</p>
             <p className="panel-sub">选择需要推送的栏目与关键词。</p>
             <div className="toggle-grid">
@@ -396,6 +525,38 @@ export default function Settings() {
                 value={content.keywords}
                 onChange={(event) => setContent({ ...content, keywords: event.target.value })}
               />
+            </div>
+            <div className="field-row">
+              <div className="field">
+                <label>AI 资讯条数</label>
+                <input
+                  type="number"
+                  min="5"
+                  max="100"
+                  value={content.aiLimit}
+                  onChange={(event) => setContent({ ...content, aiLimit: event.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label>GitHub 热度条数</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={content.trendingLimit}
+                  onChange={(event) => setContent({ ...content, trendingLimit: event.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label>论文条数</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={content.papersLimit}
+                  onChange={(event) => setContent({ ...content, papersLimit: event.target.value })}
+                />
+              </div>
             </div>
             <div className="save-bar">
               <p className="helper">支持为不同渠道设置不同内容组合。</p>

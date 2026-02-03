@@ -15,7 +15,9 @@ export default function Topbar({ variant = "home", searchValue = "", onSearchCha
   return (
     <header className="topbar">
       <div className="brand">
-        <span className="brand-mark"></span>
+        <a className="brand-icon" href="/" aria-label="返回首页">
+          <span className="brand-mark"></span>
+        </a>
         <div>
           <p className="brand-title">AI 机器人周报</p>
           <p className="brand-sub">AI 热点 + Agent 机器人信号</p>

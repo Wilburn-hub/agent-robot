@@ -63,11 +63,24 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS ai_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     source TEXT,
+    source_url TEXT,
     title TEXT,
     url TEXT UNIQUE,
     summary TEXT,
     published_at TEXT,
     created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS ai_sources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    name TEXT,
+    url TEXT NOT NULL,
+    active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, url),
+    FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
   CREATE TABLE IF NOT EXISTS translations (
@@ -87,5 +100,11 @@ db.exec(`
     sent_at TEXT DEFAULT (datetime('now'))
   );
 `);
+
+const aiItemsColumns = db.prepare("PRAGMA table_info(ai_items)").all();
+const aiItemsColumnNames = new Set(aiItemsColumns.map((column) => column.name));
+if (!aiItemsColumnNames.has("source_url")) {
+  db.prepare("ALTER TABLE ai_items ADD COLUMN source_url TEXT").run();
+}
 
 module.exports = db;

@@ -2,11 +2,16 @@ const express = require("express");
 const db = require("../db");
 const { requireAuth } = require("../utils/auth");
 const { sendDigestByChannel } = require("../services/push");
+const { fetchAiFeedsForUser, defaultFeeds } = require("../services/ai");
 
 const router = express.Router();
 
 function getUserChannels(userId) {
   return db.prepare("SELECT * FROM push_channels WHERE user_id = ? ORDER BY id DESC").all(userId);
+}
+
+function getUserSources(userId) {
+  return db.prepare("SELECT * FROM ai_sources WHERE user_id = ? ORDER BY id DESC").all(userId);
 }
 
 router.get("/settings", requireAuth, (req, res) => {
@@ -16,7 +21,8 @@ router.get("/settings", requireAuth, (req, res) => {
     schedule = db.prepare("SELECT * FROM push_schedule WHERE user_id = ?").get(req.user.id);
   }
   const channels = getUserChannels(req.user.id);
-  return res.json({ code: 200, msg: "success", data: { schedule, channels } });
+  const sources = getUserSources(req.user.id);
+  return res.json({ code: 200, msg: "success", data: { schedule, channels, sources, defaultSources: defaultFeeds } });
 });
 
 router.put("/settings", requireAuth, (req, res) => {
@@ -32,6 +38,37 @@ router.put("/settings", requireAuth, (req, res) => {
   }
 
   return res.json({ code: 200, msg: "success" });
+});
+
+router.put("/sources", requireAuth, (req, res) => {
+  const sources = Array.isArray(req.body.sources) ? req.body.sources : [];
+  const normalized = sources
+    .map((item) => {
+      const url = (item.url || "").trim();
+      if (!url) return null;
+      const typeRaw = (item.type || "rss").trim().toLowerCase();
+      return {
+        type: typeRaw === "rss" ? "rss" : "rss",
+        name: (item.name || "").trim(),
+        url,
+        active: item.active ? 1 : 0,
+      };
+    })
+    .filter(Boolean);
+
+  const removeStmt = db.prepare("DELETE FROM ai_sources WHERE user_id = ?");
+  const insertStmt = db.prepare(
+    "INSERT OR REPLACE INTO ai_sources (user_id, type, name, url, active) VALUES (?, ?, ?, ?, ?)"
+  );
+  const tx = db.transaction((rows) => {
+    removeStmt.run(req.user.id);
+    rows.forEach((row) => {
+      insertStmt.run(req.user.id, row.type, row.name, row.url, row.active);
+    });
+  });
+  tx(normalized);
+
+  return res.json({ code: 200, msg: "success", data: { count: normalized.length } });
 });
 
 router.post("/channels/wecom", requireAuth, (req, res) => {
@@ -85,7 +122,8 @@ router.post("/channels/:type/test", requireAuth, async (req, res) => {
     }
   }
   try {
-    const result = await sendDigestByChannel(channel, contentConfig);
+    await fetchAiFeedsForUser(req.user.id);
+    const result = await sendDigestByChannel(channel, contentConfig, { userId: req.user.id });
     return res.json({ code: 200, msg: "success", data: result });
   } catch (error) {
     return res.status(400).json({ code: 400, msg: error.message });

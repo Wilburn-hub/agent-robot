@@ -2,6 +2,7 @@ const cron = require("node-cron");
 const db = require("../db");
 const { getTimeParts, isWeekday } = require("../utils/time");
 const { sendDigestByChannel } = require("../services/push");
+const { fetchAiFeedsForUser } = require("../services/ai");
 
 let running = false;
 
@@ -40,6 +41,11 @@ function startScheduler() {
             contentConfig = {};
           }
         }
+        try {
+          await fetchAiFeedsForUser(schedule.user_id);
+        } catch (error) {
+          console.warn("AI 源刷新失败:", error.message);
+        }
         for (const channel of userChannels) {
           const existing = db
             .prepare(
@@ -50,7 +56,7 @@ function startScheduler() {
             continue;
           }
           try {
-            await sendDigestByChannel(channel, contentConfig);
+            await sendDigestByChannel(channel, contentConfig, { userId: schedule.user_id });
             db.prepare("INSERT INTO push_logs (user_id, channel_id, status) VALUES (?, ?, ?)").run(
               schedule.user_id,
               channel.id,

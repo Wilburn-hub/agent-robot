@@ -70,3 +70,17 @@
   - 为雷达点提供可点击链接与悬停提示
 - 样式：`web/src/styles.css`
   - 新增雷达点样式、悬浮提示与脉冲动效
+
+## 本次变更（推送通道用户教程）
+- 页面：`web/src/pages/Settings.jsx`
+  - 推送渠道面板新增「配置教程」入口
+- 静态文档：`public/push-channels.html`
+  - 面向用户的推送通道配置说明与外部参考链接
+- 样式：`web/src/styles.css`
+  - 增加推送渠道帮助区块样式
+
+## 本次变更（品牌图标返回首页）
+- 组件：`web/src/components/Topbar.jsx`
+  - 将品牌图标设为返回首页的链接
+- 样式：`web/src/styles.css`
+  - 增加品牌图标链接的交互样式

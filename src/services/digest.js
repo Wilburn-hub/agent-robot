@@ -1,5 +1,5 @@
 const { getLatestTrending } = require("./github");
-const { getLatestAi, classifyAiItem } = require("./ai");
+const { getLatestAi, classifyAiItem, getUserSourceUrls, getDefaultSourceUrls } = require("./ai");
 const { translateToZh } = require("./translate");
 
 function normalizeKeywords(keywordText) {
@@ -74,6 +74,23 @@ function formatDateTime() {
   return `${date} ${time}`;
 }
 
+function normalizeLimit(value, fallback, min = 1, max = 100) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  const safe = Math.max(min, Math.min(max, Math.floor(num)));
+  return safe;
+}
+
+function resolveSourceUrls(options = {}) {
+  if (Array.isArray(options.sourceUrls) && options.sourceUrls.length) {
+    return options.sourceUrls;
+  }
+  if (options.userId) {
+    return getUserSourceUrls(options.userId);
+  }
+  return getDefaultSourceUrls();
+}
+
 function mapAiCategory(item) {
   const tag = classifyAiItem(item);
   if (tag === "research") return "研究";
@@ -88,6 +105,10 @@ async function buildDigestText(options = {}) {
   const includeTrending = topics.includes("weekly") || topics.includes("trending");
   const includeAi = topics.includes("ai") || topics.includes("papers");
   const includePapers = topics.includes("papers");
+  const trendingLimit = normalizeLimit(options.trendingLimit, 5, 1, 50);
+  const aiLimit = normalizeLimit(options.aiLimit, 20, 5, 100);
+  const papersLimit = normalizeLimit(options.papersLimit, 5, 1, 50);
+  const sourceUrls = resolveSourceUrls(options);
 
   const lines = [];
   lines.push("### AI 机器人周报 · 今日简报");
@@ -98,7 +119,7 @@ async function buildDigestText(options = {}) {
   lines.push("");
 
   if (includeTrending) {
-    const trending = filterTrending(getLatestTrending(), keywordList).slice(0, 5);
+    const trending = filterTrending(getLatestTrending(), keywordList).slice(0, trendingLimit);
     lines.push("**一、GitHub 周度热度**");
     if (!trending.length) {
       lines.push("- 暂无匹配热度项目");
@@ -130,9 +151,10 @@ async function buildDigestText(options = {}) {
   }
 
   if (includeAi) {
-    const aiItems = filterAi(getLatestAi(10), keywordList);
+    const fetchLimit = Math.max(aiLimit, papersLimit * 3, 30);
+    const aiItems = filterAi(getLatestAi(fetchLimit, sourceUrls), keywordList);
     lines.push("**二、AI 资讯信号**");
-    const mainAi = aiItems.slice(0, 5);
+    const mainAi = aiItems.slice(0, aiLimit);
     if (!mainAi.length) {
       lines.push("- 暂无匹配 AI 资讯");
     } else {
@@ -165,7 +187,7 @@ async function buildDigestText(options = {}) {
     lines.push("");
 
     if (includePapers) {
-      const papers = aiItems.filter((item) => classifyAiItem(item) === "research").slice(0, 3);
+      const papers = aiItems.filter((item) => classifyAiItem(item) === "research").slice(0, papersLimit);
       lines.push("**三、研究论文精选**");
       if (!papers.length) {
         lines.push("- 暂无匹配论文条目");
@@ -209,13 +231,21 @@ function buildDigestSummary(options = {}) {
   const includeTrending = topics.includes("weekly") || topics.includes("trending");
   const includeAi = topics.includes("ai") || topics.includes("papers");
   const includePapers = topics.includes("papers");
+  const sourceUrls = resolveSourceUrls(options);
+  const trendingLimit = normalizeLimit(options.trendingLimit, 3, 1, 5);
+  const aiLimit = normalizeLimit(options.aiLimit, 6, 3, 8);
+  const papersLimit = normalizeLimit(options.papersLimit, 3, 1, 5);
 
   const trending = includeTrending
-    ? filterTrending(getLatestTrending(), keywordList).slice(0, 3)
+    ? filterTrending(getLatestTrending(), keywordList).slice(0, trendingLimit)
     : [];
-  const aiItems = includeAi ? filterAi(getLatestAi(8), keywordList).slice(0, 3) : [];
+  const aiItems = includeAi
+    ? filterAi(getLatestAi(Math.max(aiLimit, 12), sourceUrls), keywordList).slice(0, aiLimit)
+    : [];
   const papers = includePapers
-    ? filterAi(getLatestAi(20), keywordList).filter((item) => classifyAiItem(item) === "research").slice(0, 3)
+    ? filterAi(getLatestAi(Math.max(aiLimit * 2, 20), sourceUrls), keywordList)
+        .filter((item) => classifyAiItem(item) === "research")
+        .slice(0, papersLimit)
     : [];
 
   return {
