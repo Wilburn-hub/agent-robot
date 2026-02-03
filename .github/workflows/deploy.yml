@@ -51,6 +51,9 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
+            # 加载环境变量以确保能找到 pm2
+            source ~/.bashrc || source ~/.profile
+            
             cd ${{ secrets.DEPLOY_PATH }}
             # 安装生产环境依赖
             npm install --production
