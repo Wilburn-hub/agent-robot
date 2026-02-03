@@ -16,7 +16,11 @@ process.on("uncaughtException", (err) => {
 
 const express = require("express");
 const session = require("express-session");
+const axios = require("axios");
 const path = require("path");
+
+// 设置全局网络请求超时
+axios.defaults.timeout = 30000;
 const { startScheduler } = require("./src/jobs/scheduler");
 const authRouter = require("./src/routes/auth");
 const dataRouter = require("./src/routes/data");
