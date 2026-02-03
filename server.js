@@ -1,4 +1,19 @@
+const fs = require("fs");
 require("dotenv").config();
+
+// 全局错误日志
+process.on("unhandledRejection", (reason, promise) => {
+  const log = \`[\${new Date().toISOString()}] Unhandled Rejection at: \${promise}, reason: \${reason}\\n\`;
+  fs.appendFileSync("server_error.log", log);
+  console.error(log);
+});
+process.on("uncaughtException", (err) => {
+  const log = \`[\${new Date().toISOString()}] Uncaught Exception: \${err.stack || err}\\n\`;
+  fs.appendFileSync("server_error.log", log);
+  console.error(log);
+  process.exit(1);
+});
+
 const express = require("express");
 const session = require("express-session");
 const path = require("path");
