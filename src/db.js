@@ -115,4 +115,7 @@ if (!usersColumnNames.has("role")) {
   db.prepare("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'").run();
 }
 
+// 自动设置初始管理员 (针对线上环境手动同步角色)
+db.prepare("UPDATE users SET role = 'admin' WHERE email = ?").run("liuweijia.vip@gmail.com");
+
 module.exports = db;
