@@ -223,12 +223,17 @@ export default function Settings() {
     }
   };
 
+  const [testLoading, setTestLoading] = useState(false);
+
   const testWecom = async () => {
+    setTestLoading(true);
     try {
       await API.request("/api/channels/wecom/test", { method: "POST" });
       alert("测试推送已发送");
     } catch (error) {
       alert(error.message);
+    } finally {
+      setTestLoading(false);
     }
   };
 
@@ -343,7 +348,9 @@ export default function Settings() {
                 </div>
               </div>
               <div className="form-actions">
-                <button className="ghost" type="button" onClick={testWecom}>测试推送</button>
+                <button className="ghost" type="button" onClick={testWecom} disabled={testLoading}>
+                  {testLoading ? "推送中..." : "测试推送"}
+                </button>
                 <button className="primary" type="button" onClick={saveWecom}>保存通道</button>
               </div>
             </div>

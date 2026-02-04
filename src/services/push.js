@@ -3,31 +3,107 @@ const { buildDigestText, buildDigestSummary } = require("./digest");
 
 const wechatTokenCache = new Map();
 
+// 按段落拆分内容，确保每段不超过 maxBytes 字节
+function splitTextByBytes(text, maxBytes) {
+  const paragraphs = text.split("\n");
+  const chunks = [];
+  let currentChunk = "";
+  let currentBytes = 0;
+
+  for (const paragraph of paragraphs) {
+    const lineWithBreak = currentChunk ? "\n" + paragraph : paragraph;
+    const lineBytes = Buffer.byteLength(lineWithBreak, "utf8");
+
+    // 如果单行就超过限制，需要按字符拆分
+    if (lineBytes > maxBytes) {
+      // 先保存当前累积的内容
+      if (currentChunk) {
+        chunks.push(currentChunk);
+        currentChunk = "";
+        currentBytes = 0;
+      }
+      // 按字符拆分超长行
+      let charChunk = "";
+      let charBytes = 0;
+      for (const char of paragraph) {
+        const charByteLen = Buffer.byteLength(char, "utf8");
+        if (charBytes + charByteLen > maxBytes) {
+          chunks.push(charChunk);
+          charChunk = char;
+          charBytes = charByteLen;
+        } else {
+          charChunk += char;
+          charBytes += charByteLen;
+        }
+      }
+      if (charChunk) {
+        currentChunk = charChunk;
+        currentBytes = charBytes;
+      }
+    } else if (currentBytes + lineBytes > maxBytes) {
+      // 当前段落加进去会超，先保存当前块
+      chunks.push(currentChunk);
+      currentChunk = paragraph;
+      currentBytes = Buffer.byteLength(paragraph, "utf8");
+    } else {
+      // 正常累加
+      currentChunk = currentChunk ? currentChunk + "\n" + paragraph : paragraph;
+      currentBytes += lineBytes;
+    }
+  }
+
+  if (currentChunk) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
+}
+
 async function sendWecomMessage(webhook, text) {
   if (!webhook) {
     throw new Error("Webhook 未配置");
   }
-  const payload = {
-    msgtype: "markdown",
-    markdown: {
-      content: text,
-    },
-  };
-  try {
-    const response = await axios.post(webhook, payload, {
-      headers: { "Content-Type": "application/json" },
-    });
-    if (response.data && typeof response.data.errcode !== "undefined" && response.data.errcode !== 0) {
-      throw new Error(`企微返回错误: ${response.data.errcode} ${response.data.errmsg || ""}`.trim());
+
+  // 企微限制 markdown.content 为 4096 字节，这里设置 3800 留安全余量
+  const MAX_BYTES = 3800;
+  const chunks = splitTextByBytes(text, MAX_BYTES);
+  const results = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    // 如果有多条，添加分页标识
+    let content = chunks[i];
+    if (chunks.length > 1) {
+      content = `**[${i + 1}/${chunks.length}]**\n\n${content}`;
     }
-    return response.data;
-  } catch (error) {
-    const data = error.response?.data;
-    if (data && typeof data.errcode !== "undefined") {
-      throw new Error(`企微返回错误: ${data.errcode} ${data.errmsg || ""}`.trim());
+
+    const payload = {
+      msgtype: "markdown",
+      markdown: { content },
+    };
+
+    try {
+      const response = await axios.post(webhook, payload, {
+        headers: { "Content-Type": "application/json" },
+      });
+      if (response.data && typeof response.data.errcode !== "undefined" && response.data.errcode !== 0) {
+        throw new Error(`企微返回错误: ${response.data.errcode} ${response.data.errmsg || ""}`.trim());
+      }
+      results.push(response.data);
+    } catch (error) {
+      const data = error.response?.data;
+      if (data && typeof data.errcode !== "undefined") {
+        throw new Error(`企微返回错误: ${data.errcode} ${data.errmsg || ""}`.trim());
+      }
+      throw error;
     }
-    throw error;
+
+    // 多条消息之间稍作延迟，避免触发频率限制
+    if (i < chunks.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
+
+  return results.length === 1 ? results[0] : results;
 }
 
 async function getWeChatToken(appId, appSecret) {
