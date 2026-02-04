@@ -4,6 +4,7 @@ import { API } from "../lib/api";
 
 export default function Auth() {
   const [mode, setMode] = useState("login");
+  const [oauthEnabled, setOauthEnabled] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [registerForm, setRegisterForm] = useState({ name: "", email: "", password: "", confirm: "" });
 
@@ -15,6 +16,22 @@ export default function Auth() {
       window.history.replaceState({}, document.title, "/auth");
       window.location.href = "/settings";
     }
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    API.request("/api/auth/providers")
+      .then((res) => {
+        if (!alive) return;
+        setOauthEnabled(Boolean(res.data?.githubEnabled));
+      })
+      .catch(() => {
+        if (!alive) return;
+        setOauthEnabled(false);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const handleLogin = async () => {
@@ -72,19 +89,21 @@ export default function Auth() {
             <p className="eyebrow">安全接入</p>
             <h2>创建你的专属 AI 机器人周报</h2>
             <p>
-              通过邮箱密码或 GitHub OAuth 登录，开启个人化推送配置。
+              {oauthEnabled ? "通过邮箱密码或 GitHub OAuth 登录，开启个人化推送配置。" : "通过邮箱密码登录，开启个人化推送配置。"}
               绑定企微机器人或公众号后，每天早上自动收到热点简报。
             </p>
-            <div className="hero-stats" style={{ marginTop: "28px" }}>
-              <div>
-                <p className="stat-value">OAuth</p>
-                <p className="stat-label">GitHub 授权</p>
+            {oauthEnabled && (
+              <div className="hero-stats" style={{ marginTop: "28px" }}>
+                <div>
+                  <p className="stat-value">OAuth</p>
+                  <p className="stat-label">GitHub 授权</p>
+                </div>
+                <div>
+                  <p className="stat-value">JWT</p>
+                  <p className="stat-label">会话安全</p>
+                </div>
               </div>
-              <div>
-                <p className="stat-value">JWT</p>
-                <p className="stat-label">会话安全</p>
-              </div>
-            </div>
+            )}
           </div>
 
           <div className="auth-card">
@@ -126,11 +145,15 @@ export default function Auth() {
                 <button className="primary" type="button" onClick={handleLogin}>
                   登录
                 </button>
-                <button className="ghost oauth" type="button" onClick={handleOAuth}>
-                  GitHub 授权登录
-                </button>
+                {oauthEnabled && (
+                  <button className="ghost oauth" type="button" onClick={handleOAuth}>
+                    GitHub 授权登录
+                  </button>
+                )}
               </div>
-              <p className="helper">点击 GitHub 授权将自动创建账号并绑定。</p>
+              <p className="helper">
+                {oauthEnabled ? "点击 GitHub 授权将自动创建账号并绑定。" : "暂未配置 GitHub 授权，仅支持邮箱密码登录。"}
+              </p>
             </form>
 
             <form className={`auth-form ${mode === "register" ? "active" : ""}`}>
@@ -176,9 +199,11 @@ export default function Auth() {
                 <button className="primary" type="button" onClick={handleRegister}>
                   创建账号
                 </button>
-                <button className="ghost oauth" type="button" onClick={handleOAuth}>
-                  GitHub 授权注册
-                </button>
+                {oauthEnabled && (
+                  <button className="ghost oauth" type="button" onClick={handleOAuth}>
+                    GitHub 授权注册
+                  </button>
+                )}
               </div>
               <p className="helper">注册即代表你同意《用户协议》和《隐私政策》。</p>
             </form>

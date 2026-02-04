@@ -1,6 +1,7 @@
 const db = require("../db");
 const { fetchGitHubTrending } = require("./github");
 const { fetchAiFeedsForAllUsers } = require("./ai");
+const { fetchSkillsLeaderboard } = require("./skills");
 
 const runningJobs = new Set();
 
@@ -73,6 +74,12 @@ async function refreshAiFeeds(options = {}) {
   });
 }
 
+async function refreshSkills(options = {}) {
+  return runJob("skills_leaderboard", () => fetchSkillsLeaderboard(), {
+    reason: options.reason || "",
+  });
+}
+
 async function refreshTrendingIfStale(minMinutes = 360) {
   const job = getJob("github_trending");
   if (!job || isStale(job.last_run_at, minMinutes)) {
@@ -89,10 +96,19 @@ async function refreshAiFeedsIfStale(minMinutes = 60) {
   return { skipped: true, reason: "fresh", last_run_at: job.last_run_at };
 }
 
+async function refreshSkillsIfStale(minMinutes = 360) {
+  const job = getJob("skills_leaderboard");
+  if (!job || isStale(job.last_run_at, minMinutes)) {
+    return refreshSkills({ reason: "stale" });
+  }
+  return { skipped: true, reason: "fresh", last_run_at: job.last_run_at };
+}
+
 async function cleanupOldData(options = {}) {
   const aiDays = Math.max(7, parseInt(process.env.AI_RETENTION_DAYS || "30", 10));
   const trendingDays = Math.max(14, parseInt(process.env.TRENDING_RETENTION_DAYS || "90", 10));
   const logDays = Math.max(7, parseInt(process.env.PUSH_LOG_RETENTION_DAYS || "90", 10));
+  const skillsDays = Math.max(7, parseInt(process.env.SKILLS_RETENTION_DAYS || "30", 10));
 
   return runJob(
     "cleanup",
@@ -103,14 +119,17 @@ async function cleanupOldData(options = {}) {
       const trendingCount = db
         .prepare("DELETE FROM trending_repos WHERE date(snapshot_date) < date('now', ?)")
         .run(`-${trendingDays} days`).changes;
+      const skillsCount = db
+        .prepare("DELETE FROM skills_items WHERE date(snapshot_date) < date('now', ?)")
+        .run(`-${skillsDays} days`).changes;
       const logCount = db
         .prepare("DELETE FROM push_logs WHERE datetime(sent_at) < datetime('now', ?)")
         .run(`-${logDays} days`).changes;
-      return { aiCount, trendingCount, logCount };
+      return { aiCount, trendingCount, skillsCount, logCount };
     },
     {
       message: (result) =>
-        `ai:${result.aiCount}, trending:${result.trendingCount}, logs:${result.logCount}`,
+        `ai:${result.aiCount}, trending:${result.trendingCount}, skills:${result.skillsCount}, logs:${result.logCount}`,
     }
   );
 }
@@ -119,14 +138,17 @@ async function refreshAll(options = {}) {
   const reason = options.reason || "";
   const trending = await refreshTrending({ reason });
   const ai = await refreshAiFeeds({ reason });
-  return { trending, ai };
+  const skills = await refreshSkills({ reason });
+  return { trending, ai, skills };
 }
 
 module.exports = {
   refreshTrending,
   refreshAiFeeds,
+  refreshSkills,
   refreshTrendingIfStale,
   refreshAiFeedsIfStale,
+  refreshSkillsIfStale,
   cleanupOldData,
   refreshAll,
   getJob,

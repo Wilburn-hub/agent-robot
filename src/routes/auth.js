@@ -75,6 +75,11 @@ router.put("/me", requireAuth, (req, res) => {
   return res.json({ code: 200, msg: "success", data: buildUserResponse(user) });
 });
 
+router.get("/providers", (req, res) => {
+  const githubEnabled = Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET);
+  return res.json({ code: 200, msg: "success", data: { githubEnabled } });
+});
+
 router.get("/github", (req, res) => {
   const clientId = process.env.GITHUB_CLIENT_ID;
   if (!clientId) {
@@ -126,13 +131,6 @@ router.get("/github/callback", async (req, res) => {
       email = primary ? primary.email : null;
     }
 
-    let user = db.prepare("SELECT * FROM users WHERE github_id = ?").get(String(githubUser.id));
-    if (!user && email) {
-      user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-      if (user) {
-        db.prepare("UPDATE users SET github_id = ? WHERE id = ?").run(String(githubUser.id), user.id);
-      }
-    }
     if (!user) {
       const info = db
         .prepare("INSERT INTO users (email, name, github_id) VALUES (?, ?, ?)")
@@ -143,7 +141,10 @@ router.get("/github/callback", async (req, res) => {
 
     syncAdminRoleByEmail(user.email);
     const token = signToken({ id: user.id, email: user.email, name: user.name });
-    return res.redirect(`/auth.html?token=${token}`);
+    console.log(`[OAuth Debug] User: ${user.email}, Token: ${token.slice(0, 10)}...`);
+    const redirectTarget = `/auth?token=${token}`;
+    console.log(`[OAuth Debug] Redirecting to: ${redirectTarget}`);
+    return res.redirect(redirectTarget);
   } catch (error) {
     console.error("GitHub OAuth 失败:", error.message);
     return res.status(500).send("GitHub 登录失败");

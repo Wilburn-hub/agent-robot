@@ -8,6 +8,7 @@ export default function Topbar({ variant = "home", searchValue = "", onSearchCha
   const navItems = [
     { href: "/#weekly", label: "每周热度" },
     { href: "/#trending", label: "趋势排行" },
+    { href: "/#skills", label: "热门 Skills" },
     { href: "/#ai", label: "AI 雷达" },
     { href: "/#push", label: "企微推送" },
     { href: "/settings", label: "设置中心" },

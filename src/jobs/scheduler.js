@@ -7,6 +7,7 @@ const {
   refreshAiFeeds,
   refreshTrendingIfStale,
   refreshAiFeedsIfStale,
+  refreshSkillsIfStale,
   cleanupOldData,
 } = require("../services/refresh");
 
@@ -15,6 +16,7 @@ let runningCleanup = false;
 
 const TRENDING_REFRESH_CRON = process.env.TRENDING_REFRESH_CRON || "0 6 * * *";
 const AI_REFRESH_CRON = process.env.AI_REFRESH_CRON || "*/30 * * * *";
+const SKILLS_REFRESH_CRON = process.env.SKILLS_REFRESH_CRON || "0 */6 * * *";
 const CLEANUP_CRON = process.env.CLEANUP_CRON || "30 3 * * *";
 
 function shouldSend(schedule, timeParts) {
@@ -38,6 +40,7 @@ function startScheduler() {
       try {
         await refreshTrendingIfStale(360);
         await refreshAiFeedsIfStale(60);
+        await refreshSkillsIfStale(360);
       } catch (error) {
         console.warn("数据刷新失败:", error.message);
       }
@@ -97,6 +100,14 @@ function startScheduler() {
       await refreshAiFeeds({ reason: "cron" });
     } catch (error) {
       console.warn("AI RSS 刷新失败:", error.message);
+    }
+  });
+
+  cron.schedule(SKILLS_REFRESH_CRON, async () => {
+    try {
+      await refreshSkillsIfStale(0);
+    } catch (error) {
+      console.warn("Skills 榜单刷新失败:", error.message);
     }
   });
 

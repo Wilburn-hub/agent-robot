@@ -73,6 +73,20 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS skills_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    list_type TEXT,
+    rank INTEGER,
+    source TEXT,
+    skill_id TEXT,
+    name TEXT,
+    installs INTEGER,
+    installs_yesterday INTEGER,
+    change INTEGER,
+    snapshot_date TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS ai_sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,

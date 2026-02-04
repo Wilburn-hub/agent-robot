@@ -386,6 +386,11 @@ main {
   text-transform: uppercase;
 }
 
+.radar-title.small {
+  font-size: 13px;
+  letter-spacing: 0.16em;
+}
+
 .radar-sub {
   font-size: 12px;
   color: var(--muted);
@@ -400,6 +405,11 @@ main {
   border-radius: 999px;
   border: 1px solid rgba(88, 242, 201, 0.5);
   color: var(--accent);
+}
+
+.chip.muted {
+  border-color: rgba(199, 255, 75, 0.35);
+  color: var(--accent-2);
 }
 
 .radar-graphic {
@@ -518,6 +528,92 @@ main {
   justify-content: space-between;
   font-size: 13px;
   color: var(--muted);
+}
+
+.radar-insights {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.radar-insights-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.radar-insight-list {
+  display: grid;
+  gap: 10px;
+}
+
+.radar-insight {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(10, 16, 24, 0.72);
+  border: 1px solid rgba(31, 43, 61, 0.65);
+}
+
+.radar-insight-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.radar-insight-title {
+  color: var(--ink);
+}
+
+.radar-insight-trend {
+  font-family: var(--font-mono);
+  color: var(--accent-2);
+}
+
+.radar-insight-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(31, 43, 61, 0.8);
+  margin: 8px 0 6px;
+  overflow: hidden;
+}
+
+.radar-insight-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(88, 242, 201, 0.9), rgba(199, 255, 75, 0.95));
+  box-shadow: 0 0 12px rgba(199, 255, 75, 0.4);
+}
+
+.radar-insight-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.radar-insight-tags span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 43, 61, 0.65);
+  background: rgba(14, 22, 32, 0.75);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.radar-insight-empty {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px dashed rgba(31, 43, 61, 0.6);
+  text-align: center;
 }
 
 .section-head {
@@ -703,6 +799,143 @@ main {
   text-align: right;
   font-size: 12px;
   letter-spacing: 0.08em;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.skill-card {
+  padding: 20px;
+  border-radius: 20px;
+  background: rgba(12, 18, 26, 0.9);
+  border: 1px solid rgba(31, 43, 61, 0.7);
+  box-shadow: 0 24px 60px rgba(2, 12, 24, 0.5);
+  display: grid;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skill-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -20% -40% -20%;
+  height: 80%;
+  background: radial-gradient(circle, rgba(88, 242, 201, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.skill-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.skill-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.skill-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 6px;
+}
+
+.skill-score {
+  text-align: right;
+  font-family: var(--font-display);
+  color: var(--accent-2);
+}
+
+.score-value {
+  font-size: 24px;
+  letter-spacing: 0.12em;
+}
+
+.score-label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.skill-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  position: relative;
+  z-index: 1;
+}
+
+.metric-label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.metric-value {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.skill-focus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.skill-focus span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 43, 61, 0.7);
+  background: rgba(14, 22, 32, 0.8);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.skill-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(88, 242, 201, 0.45);
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.skill-pill:hover {
+  background: rgba(88, 242, 201, 0.12);
+  border-color: rgba(88, 242, 201, 0.8);
 }
 
 .ai-feed {

@@ -45,6 +45,26 @@ function truncateText(text, max = 60) {
   return `${clean.slice(0, max)}...`;
 }
 
+function normalizeSummary(text) {
+  const clean = (text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  return clean
+    .replace(/^arXiv:\S+\s+Announce Type:\s*\w+\s*Abstract:\s*/i, "")
+    .replace(/^arXiv:\S+\s+Abstract:\s*/i, "")
+    .replace(/^Abstract:\s*/i, "");
+}
+
+function pickTranslated(original, translated) {
+  if (!original) return "";
+  const originalClean = (original || "").trim();
+  const translatedClean = (translated || "").trim();
+  if (!translatedClean) return originalClean;
+  if (translatedClean === originalClean) {
+    return originalClean;
+  }
+  return translatedClean;
+}
+
 async function mapWithConcurrency(list, limit, mapper) {
   const results = new Array(list.length);
   let index = 0;
@@ -136,14 +156,14 @@ async function buildDigestText(options = {}) {
         const item = trending[i];
         const descRaw = truncateText(item.description || "", 200);
         const descZh = descList[i];
-        const desc = truncateText(descZh || descRaw, 90);
+        const desc = truncateText(pickTranslated(descRaw, descZh), 90);
         const lang = item.language ? ` · 语言：${item.language}` : "";
         const title = item.url
           ? `[${item.owner}/${item.name}](${item.url})`
           : `${item.owner}/${item.name}`;
         lines.push(`- ${title}（新增星标：${formatCompactNumber(item.stars_delta)}${lang}）`);
         if (desc) {
-          lines.push(`> 简介：${desc}${hasChinese(desc) ? "" : "（原文）"}`);
+          lines.push(`> 简介：${desc}`);
         }
       }
     }
@@ -166,21 +186,20 @@ async function buildDigestText(options = {}) {
       const summaryList = await mapWithConcurrency(
         mainAi,
         3,
-        async (item) => translateToZh(truncateText(item.summary || "", 240))
+        async (item) => translateToZh(truncateText(normalizeSummary(item.summary || ""), 240))
       );
       for (let i = 0; i < mainAi.length; i += 1) {
         const item = mainAi[i];
         const titleZh = titleList[i];
-        const titleText = truncateText(titleZh || item.title, 90);
+        const titleText = truncateText(pickTranslated(item.title, titleZh), 90);
         const title = item.url ? `[${titleText}](${item.url})` : titleText;
         const source = item.source ? `来源：${item.source}` : "来源：未知";
         const category = `类型：${mapAiCategory(item)}`;
-        const langHint = hasChinese(titleText) ? "" : " · 英文标题";
-        lines.push(`- ${title}（${source} · ${category}${langHint}）`);
+        lines.push(`- ${title}（${source} · ${category}）`);
         if (item.summary) {
           const summaryZh = summaryList[i];
-          const summary = truncateText(summaryZh || item.summary, 100);
-          lines.push(`> 摘要：${summary}${hasChinese(summary) ? "" : "（原文）"}`);
+          const summary = truncateText(pickTranslated(normalizeSummary(item.summary || ""), summaryZh), 100);
+          lines.push(`> 摘要：${summary}`);
         }
       }
     }
@@ -200,20 +219,19 @@ async function buildDigestText(options = {}) {
         const paperSummaryList = await mapWithConcurrency(
           papers,
           2,
-          async (item) => translateToZh(truncateText(item.summary || "", 240))
+          async (item) => translateToZh(truncateText(normalizeSummary(item.summary || ""), 240))
         );
         for (let i = 0; i < papers.length; i += 1) {
           const item = papers[i];
           const titleZh = paperTitleList[i];
-          const titleText = truncateText(titleZh || item.title, 90);
+          const titleText = truncateText(pickTranslated(item.title, titleZh), 90);
           const title = item.url ? `[${titleText}](${item.url})` : titleText;
           const source = item.source ? `来源：${item.source}` : "来源：未知";
-          const langHint = hasChinese(titleText) ? "" : " · 英文标题";
-          lines.push(`- ${title}（${source}${langHint}）`);
+          lines.push(`- ${title}（${source}）`);
           if (item.summary) {
             const summaryZh = paperSummaryList[i];
-            const summary = truncateText(summaryZh || item.summary, 100);
-            lines.push(`> 摘要：${summary}${hasChinese(summary) ? "" : "（原文）"}`);
+            const summary = truncateText(pickTranslated(normalizeSummary(item.summary || ""), summaryZh), 100);
+            lines.push(`> 摘要：${summary}`);
           }
         }
       }

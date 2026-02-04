@@ -18,6 +18,7 @@
 | 登录 | POST | /api/auth/login | email, password | token, user |
 | 用户信息 | GET | /api/auth/me | - | id, email, name, githubId |
 | 更新用户 | PUT | /api/auth/me | name, email | id, email, name, githubId |
+| OAuth 可用性 | GET | /api/auth/providers | - | githubEnabled |
 | GitHub OAuth | GET | /api/auth/github | - | 重定向 |
 | GitHub 回调 | GET | /api/auth/github/callback | code, state | 重定向携带 token |
 | 获取周榜 | GET | /api/trending | language, q, period, limit | list |

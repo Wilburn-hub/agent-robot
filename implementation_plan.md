@@ -30,6 +30,7 @@
 - `src/services/digest.js`
 - `src/services/push.js`
 - `src/services/refresh.js`
+- `src/services/skills.js`
 - `src/jobs/scheduler.js`
 - `src/routes/auth.js`
 - `src/routes/data.js`
@@ -71,17 +72,28 @@
 | frequency | push_schedule.frequency | daily/weekday/weekly |
 | content | push_schedule.content_json | 推送内容配置 |
 | sentKey | push_logs.sent_key | 定时推送防重复标识 |
+| listType | skills_items.list_type | 榜单类型（all_time/trending/hot） |
+| rank | skills_items.rank | 榜单排序 |
+| source | skills_items.source | GitHub owner/repo |
+| skillId | skills_items.skill_id | Skill 标识 |
+| name | skills_items.name | Skill 名称 |
+| installs | skills_items.installs | 安装量 |
+| installsYesterday | skills_items.installs_yesterday | 昨日安装量 |
+| change | skills_items.change | 变化值 |
+| snapshotDate | skills_items.snapshot_date | 抓取日期 |
 
 ## API 路径
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `GET /api/auth/me`
 - `PUT /api/auth/me`
+- `GET /api/auth/providers`
 - `GET /api/auth/github`
 - `GET /api/auth/github/callback`
 - `GET /api/trending`
 - `GET /api/weekly`
 - `GET /api/ai`
+- `GET /api/skills`
 - `POST /api/channels/wecom`
 - `POST /api/channels/wechat`
 - `POST /api/channels/feishu`
@@ -123,6 +135,24 @@
 - 样式：`web/src/styles.css`
   - 增加品牌图标链接的交互样式
 
+## 本次变更（Skills 热榜接入）
+- 后端：`src/services/skills.js`
+  - 抓取 skills.sh 榜单（All Time / Trending / Hot）并入库
+- 后端：`src/db.js`
+  - 新增 `skills_items` 表结构与迁移字段
+- 后端：`src/services/refresh.js`
+  - 新增 skills 刷新任务与 stale 检测
+- 后端：`src/jobs/scheduler.js`
+  - 新增 skills 定时刷新 cron
+- 后端：`src/routes/data.js`
+  - 新增 `GET /api/skills` 接口，支持榜单类型/关键词/数量过滤
+- 配置：`.env.example`
+  - 增加 skills 刷新 cron/保留天数配置
+- 前端：`web/src/pages/Home.jsx`
+  - 热门 Skills 区域改为真实数据源
+- 样式：`web/src/styles.css`
+  - Skills 列表与雷达小榜单样式优化
+
 ## 本次变更（管理员权限修复）
 - 后端：`src/utils/auth.js`
   - 解析 `ADMIN_EMAIL` / `ADMIN_EMAILS` 配置并支持按邮箱自动同步管理员角色
@@ -146,3 +176,18 @@
   - 补充飞书机器人配置说明与字段速查
 - 文档：`docs/api.md` / `docs/integration-checklist.md`
   - 更新 API 清单与字段映射
+
+## 本次变更（日报内容优化）
+- 后端：`src/services/digest.js`
+  - 清洗 arXiv 摘要前缀
+  - 去除“英文标题/原文”噪声标记，优先展示译文或原文
+
+## 本次变更（GitHub OAuth 登录完善）
+- 后端：`src/routes/auth.js`
+  - 新增 OAuth 可用性查询接口（用于前端判断是否展示 GitHub 登录）
+  - 修正 OAuth 回跳地址为 `/auth`，确保 SPA 路由能接收 token
+- 前端：`web/src/pages/Auth.jsx`
+  - 拉取 OAuth 可用性并按配置显示/隐藏 GitHub 登录按钮与文案
+  - 未配置时展示邮箱密码登录提示
+- 前端：`web/src/App.jsx`
+  - 兼容 `/auth.html` 旧路径，避免历史链接失效

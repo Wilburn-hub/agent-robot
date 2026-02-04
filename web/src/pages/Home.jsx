@@ -15,6 +15,11 @@ const aiFilters = [
   { key: "product", label: "产品" },
   { key: "opensource", label: "开源" },
 ];
+const skillsFilters = [
+  { key: "trending", label: "24H 热门" },
+  { key: "hot", label: "热度变化" },
+  { key: "all_time", label: "历史累计" },
+];
 
 function formatCompactNumber(value) {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)}m`;
@@ -77,6 +82,9 @@ export default function Home() {
   const [trending, setTrending] = useState([]);
   const [weekly, setWeekly] = useState([]);
   const [aiItems, setAiItems] = useState([]);
+  const [skills, setSkills] = useState([]);
+  const [skillsView, setSkillsView] = useState("trending");
+  const [skillsMeta, setSkillsMeta] = useState({ snapshot: null, source: "skills.sh" });
   const [searchText, setSearchText] = useState("");
   const [language, setLanguage] = useState("全部");
   const [period, setPeriod] = useState("weekly");
@@ -127,9 +135,56 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [language, period, aiCategory, debouncedSearch]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      async function loadSkills() {
+        try {
+          const res = await API.request(
+            `/api/skills${buildQuery({ list: skillsView, q: debouncedSearch, limit: "12" })}`
+          );
+          setSkills(res.data.list || []);
+          setSkillsMeta({
+            snapshot: res.data.snapshot_date || null,
+            source: res.data.source || "skills.sh",
+          });
+        } catch (error) {
+          setSkills([]);
+          setSkillsMeta({ snapshot: null, source: "skills.sh" });
+        }
+      }
+      loadSkills();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [skillsView, debouncedSearch]);
+
   const weeklyData = weekly;
   const trendingData = trending;
   const aiData = aiItems;
+  const skillsData = skills;
+  const skillsViewLabel = useMemo(
+    () => skillsFilters.find((item) => item.key === skillsView)?.label || "24H 热门",
+    [skillsView]
+  );
+
+  const skillHighlights = useMemo(() => {
+    if (!skillsData.length) return [];
+    const maxInstalls = Math.max(...skillsData.map((item) => Number(item.installs) || 0), 1);
+    return skillsData.slice(0, 4).map((item) => {
+      const installs = Number(item.installs) || 0;
+      const heat = clamp(Math.round((installs / maxInstalls) * 100), 18, 100);
+      const hasChange = item.change !== null && item.change !== undefined;
+      const trend = hasChange
+        ? `${item.change >= 0 ? "+" : "-"}${formatCompactNumber(Math.abs(item.change))}`
+        : "--";
+      return {
+        ...item,
+        heat,
+        trend,
+        label: item.name || item.skill_id || "未命名 Skill",
+      };
+    });
+  }, [skillsData]);
 
   const radarPoints = useMemo(() => {
     const now = Date.now();
@@ -272,11 +327,11 @@ export default function Home() {
                 </div>
                 <span className="chip">实时</span>
               </div>
-              <div className="radar-graphic">
-                <div className="ring"></div>
-                <div className="ring"></div>
-                <div className="ring"></div>
-                <div className="sweep"></div>
+            <div className="radar-graphic">
+              <div className="ring"></div>
+              <div className="ring"></div>
+              <div className="ring"></div>
+              <div className="sweep"></div>
                 {radarPoints.map((item, index) => {
                   const BlipTag = item.url ? "a" : "div";
                   return (
@@ -301,6 +356,33 @@ export default function Home() {
                 {!radarPoints.length && (
                   <div className="radar-empty">暂无信号</div>
                 )}
+              </div>
+              <div className="radar-insights">
+                <div className="radar-insights-head">
+                  <p className="radar-title small">热门 Skills</p>
+                  <span className="chip muted">热度榜</span>
+                </div>
+                <div className="radar-insight-list">
+                  {skillHighlights.map((item) => (
+                    <div className="radar-insight" key={`${item.source}-${item.skill_id}`}>
+                      <div className="radar-insight-row">
+                        <span className="radar-insight-title">{truncateText(item.label, 18)}</span>
+                        <span className="radar-insight-trend">{item.trend}</span>
+                      </div>
+                      <div className="radar-insight-bar">
+                        <span style={{ width: `${item.heat}%` }}></span>
+                      </div>
+                      <div className="radar-insight-tags">
+                        <span>{`#${String(item.rank || 0).padStart(2, "0")}`}</span>
+                        {item.source && <span>{item.source}</span>}
+                        <span>{`${formatCompactNumber(item.installs)} installs`}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {!skillHighlights.length && (
+                    <div className="radar-insight-empty">暂无技能热度</div>
+                  )}
+                </div>
               </div>
               <div className="radar-foot">
                 <p>
@@ -424,6 +506,81 @@ export default function Home() {
           </div>
           {!trendingData.length && (
             <p className="empty-state">暂无匹配的仓库数据</p>
+          )}
+        </section>
+
+        <section id="skills" className="skills">
+          <div className="section-head">
+            <div>
+              <p className="section-title">热门 Skills</p>
+              <p className="section-sub">
+                {skillsMeta.snapshot ? `数据日期 ${skillsMeta.snapshot}` : "实时抓取的技能热度榜。"}
+              </p>
+            </div>
+            <div className="segment">
+              {skillsFilters.map((item) => (
+                <button
+                  key={item.key}
+                  className={`segment-btn ${skillsView === item.key ? "active" : ""}`}
+                  onClick={() => setSkillsView(item.key)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="skills-grid">
+            {skillsData.map((item) => {
+              const changeText = item.change !== null && item.change !== undefined
+                ? `${item.change >= 0 ? "+" : "-"}${formatCompactNumber(Math.abs(item.change))}`
+                : "--";
+              return (
+              <div className="skill-card" key={`${item.source}-${item.skill_id}`}>
+                <div className="skill-head">
+                  <div>
+                    <p className="skill-title">{item.name || item.skill_id}</p>
+                    <p className="skill-desc">{item.source}</p>
+                  </div>
+                  <div className="skill-score">
+                    <span className="score-value">{formatCompactNumber(item.installs)}</span>
+                    <span className="score-label">Installs</span>
+                  </div>
+                </div>
+                <div className="skill-metrics">
+                  <div>
+                    <span className="metric-label">排名</span>
+                    <strong className="metric-value">#{String(item.rank || 0).padStart(2, "0")}</strong>
+                  </div>
+                  <div>
+                    <span className="metric-label">变化</span>
+                    <strong className="metric-value">{changeText}</strong>
+                  </div>
+                  <div>
+                    <span className="metric-label">榜单</span>
+                    <strong className="metric-value">{skillsViewLabel}</strong>
+                  </div>
+                </div>
+                <div className="skill-focus">
+                  {item.skill_id && <span>{item.skill_id}</span>}
+                  {item.source && <span>{item.source}</span>}
+                </div>
+                <div className="skill-list">
+                  {item.skill_url && (
+                    <a className="skill-pill" href={item.skill_url} target="_blank" rel="noreferrer">
+                      Skill 详情
+                    </a>
+                  )}
+                  {item.repo_url && (
+                    <a className="skill-pill" href={item.repo_url} target="_blank" rel="noreferrer">
+                      GitHub Repo
+                    </a>
+                  )}
+                </div>
+              </div>
+            )})}
+          </div>
+          {!skillsData.length && (
+            <p className="empty-state">暂无匹配的技能榜单</p>
           )}
         </section>
 

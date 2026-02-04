@@ -135,6 +135,56 @@ router.get("/ai", (req, res) => {
   return res.json({ code: 200, msg: "success", data: { list } });
 });
 
+router.get("/skills", (req, res) => {
+  const listType = (req.query.list || "trending").trim().toLowerCase();
+  const q = (req.query.q || "").trim();
+  const limit = req.query.limit || "20";
+  const queryLimit = Math.min(parseInt(limit, 10) || 20, 100);
+  const allowed = new Set(["trending", "hot", "all_time"]);
+  const normalizedType = allowed.has(listType) ? listType : "trending";
+
+  const clauses = ["list_type = ?"];
+  const params = [normalizedType];
+  if (q) {
+    clauses.push("(name LIKE ? OR source LIKE ? OR skill_id LIKE ?)");
+    params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+  }
+  const whereClause = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const rows = db
+    .prepare(
+      `SELECT * FROM skills_items ${whereClause}
+       ORDER BY rank ASC
+       LIMIT ?`
+    )
+    .all(...params, queryLimit);
+
+  const snapshot = db
+    .prepare("SELECT MAX(snapshot_date) AS date FROM skills_items WHERE list_type = ?")
+    .get(normalizedType);
+
+  const list = rows.map((item) => {
+    const source = item.source || "";
+    const skillId = item.skill_id || "";
+    return {
+      ...item,
+      skill_url: source && skillId ? `https://skills.sh/${source}/${skillId}` : null,
+      repo_url: source ? `https://github.com/${source}` : null,
+    };
+  });
+
+  return res.json({
+    code: 200,
+    msg: "success",
+    data: {
+      list,
+      list_type: normalizedType,
+      snapshot_date: snapshot?.date || null,
+      total: list.length,
+      source: "skills.sh",
+    },
+  });
+});
+
 router.get("/digest/preview", async (req, res) => {
   const topicsParam = (req.query.topics || "").trim();
   const keywords = (req.query.keywords || "").trim();
