@@ -1,4 +1,6 @@
+import { animated, useSpring, useTrail } from "@react-spring/web";
 import { API } from "../lib/api";
+import usePrefersReducedMotion from "../lib/usePrefersReducedMotion";
 
 export default function Topbar({ variant = "home", searchValue = "", onSearchChange, onSearchSubmit }) {
   const isAuthed = Boolean(API.getToken());
@@ -13,6 +15,33 @@ export default function Topbar({ variant = "home", searchValue = "", onSearchCha
     { href: "/#push", label: "企微推送" },
     { href: "/settings", label: "设置中心" },
   ];
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  const headerSpring = useSpring({
+    from: { opacity: 0, y: -14 },
+    to: { opacity: 1, y: 0 },
+    config: { tension: 240, friction: 22 },
+    immediate: prefersReducedMotion,
+  });
+
+  const navTrail = useTrail(navItems.length, {
+    from: { opacity: 0, y: -6 },
+    to: { opacity: 1, y: 0 },
+    delay: 120,
+    config: { tension: 240, friction: 20 },
+    immediate: prefersReducedMotion,
+  });
+
+  const actionsSpring = useSpring({
+    from: { opacity: 0, y: -8 },
+    to: { opacity: 1, y: 0 },
+    delay: 180,
+    config: { tension: 220, friction: 22 },
+    immediate: prefersReducedMotion,
+  });
+  const AnimatedHeader = animated.header;
+  const AnimatedLink = animated.a;
+  const AnimatedActions = animated.div;
 
   const githubLink = (
     <a
@@ -76,7 +105,13 @@ export default function Topbar({ variant = "home", searchValue = "", onSearchCha
   }
 
   return (
-    <header className="topbar">
+    <AnimatedHeader
+      className="topbar"
+      style={{
+        opacity: headerSpring.opacity,
+        transform: headerSpring.y.to((value) => `translate3d(0, ${value}px, 0)`),
+      }}
+    >
       <div className="brand">
         <a className="brand-icon" href="/" aria-label="返回首页">
           <span className="brand-mark"></span>
@@ -87,16 +122,32 @@ export default function Topbar({ variant = "home", searchValue = "", onSearchCha
         </div>
       </div>
       <nav className="nav">
-        {navItems.map((item) => (
-          <a key={item.href} href={item.href}>
-            {item.label}
-          </a>
-        ))}
+        {navTrail.map((style, index) => {
+          const item = navItems[index];
+          return (
+            <AnimatedLink
+              key={item.href}
+              href={item.href}
+              style={{
+                opacity: style.opacity,
+                transform: style.y.to((value) => `translate3d(0, ${value}px, 0)`),
+              }}
+            >
+              {item.label}
+            </AnimatedLink>
+          );
+        })}
       </nav>
-      <div className="top-actions">
+      <AnimatedActions
+        className="top-actions"
+        style={{
+          opacity: actionsSpring.opacity,
+          transform: actionsSpring.y.to((value) => `translate3d(0, ${value}px, 0)`),
+        }}
+      >
         {actionContent}
         {githubLink}
-      </div>
-    </header>
+      </AnimatedActions>
+    </AnimatedHeader>
   );
 }

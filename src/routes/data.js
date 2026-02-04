@@ -158,6 +158,10 @@ router.get("/skills", (req, res) => {
     )
     .all(...params, queryLimit);
 
+  const totalRow = db
+    .prepare(`SELECT COUNT(*) AS total FROM skills_items ${whereClause}`)
+    .get(...params);
+
   const snapshot = db
     .prepare("SELECT MAX(snapshot_date) AS date FROM skills_items WHERE list_type = ?")
     .get(normalizedType);
@@ -179,7 +183,7 @@ router.get("/skills", (req, res) => {
       list,
       list_type: normalizedType,
       snapshot_date: snapshot?.date || null,
-      total: list.length,
+      total: totalRow?.total || list.length,
       source: "skills.sh",
     },
   });

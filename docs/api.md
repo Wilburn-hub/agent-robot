@@ -5,6 +5,7 @@
 | 页面/组件 | 数据类型 | 操作 | 字段列表 | 备注 |
 |-----------|----------|------|----------|------|
 | 首页趋势榜 | 列表 | 查询 | owner, name, description, language, stars, stars_delta | 周榜 + 热度 | 
+| Skills 热度榜 | 列表 | 查询 | name, skill_id, source, installs, change, rank | skills.sh 榜单 |
 | AI 雷达流 | 列表 | 查询 | title, source, published_at, url | RSS 聚合 |
 | 登录/注册 | 表单 | 新增/登录 | email, password, name | JWT 登录 |
 | 设置中心 | 详情 | 查询/更新 | time, timezone, frequency, content, channels | 用户级配置 |
@@ -24,6 +25,7 @@
 | 获取周榜 | GET | /api/trending | language, q, period, limit | list |
 | 获取周榜（别名） | GET | /api/weekly | language, q, limit | list |
 | AI 资讯流 | GET | /api/ai | category, q, limit | list |
+| Skills 榜单 | GET | /api/skills | list, q, limit | list |
 | 简报预览 | GET | /api/digest/preview | topics, keywords | text |
 | 简报测试推送 | POST | /api/digest/send | - | text, results |
 | 保存企微通道 | POST | /api/channels/wecom | name, webhook, active | - |
@@ -32,7 +34,7 @@
 | 测试推送 | POST | /api/channels/:type/test | - | 发送结果 |
 | 获取设置 | GET | /api/settings | - | schedule, channels |
 | 保存设置 | PUT | /api/settings | time, timezone, frequency, content | - |
-| 强制刷新 | POST | /api/admin/refresh | - | trending, ai |
+| 强制刷新 | POST | /api/admin/refresh | - | trending, ai, skills |
 
 ## 通用响应格式
 
@@ -123,6 +125,29 @@
 | category | string | ❌ | all/research/product/opensource | "research" |
 | q | string | ❌ | 关键词搜索 | "LLM" |
 | limit | number | ❌ | 返回条数 | 20 |
+
+### 获取 Skills 榜单
+**请求信息**
+- **路径**: `GET /api/skills`
+- **权限**: 无
+- **描述**: 获取 skills.sh 的榜单数据
+
+**请求参数**
+| 参数名 | 类型 | 必填 | 说明 | 示例 |
+|--------|------|------|------|------|
+| list | string | ❌ | trending/hot/all_time | "trending" |
+| q | string | ❌ | 关键词搜索 | "agent" |
+| limit | number | ❌ | 返回条数 | 20 |
+
+**响应数据**
+| 字段名 | 类型 | 说明 | 示例 |
+|--------|------|------|------|
+| name | string | Skill 名称 | "codex-doc" |
+| skill_id | string | Skill ID | "api-doc-workflow" |
+| source | string | 来源 | "openai" |
+| installs | number | 安装量 | 1200 |
+| change | number | 变化值 | 120 |
+| rank | number | 排名 | 1 |
 
 ### 简报预览
 **请求信息**

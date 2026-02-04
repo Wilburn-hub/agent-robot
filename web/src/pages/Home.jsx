@@ -1,6 +1,8 @@
+import { animated, useSpring, useTrail } from "@react-spring/web";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Topbar from "../components/Topbar";
 import { API } from "../lib/api";
+import usePrefersReducedMotion from "../lib/usePrefersReducedMotion";
 
 
 const languageFilters = ["全部", "TypeScript", "Python", "Rust"];
@@ -53,6 +55,13 @@ function truncateText(value, maxLength) {
   return `${value.slice(0, Math.max(0, maxLength - 1))}…`;
 }
 
+function buildSkillPath(item) {
+  const source = (item?.source || "").trim();
+  const skillId = (item?.skill_id || "").trim();
+  if (source && skillId) return `${source}/${skillId}`;
+  return source || skillId || "未命名 Skill";
+}
+
 function classifyAiTag(item) {
   const source = (item.source || "").toLowerCase();
   if (source.includes("arxiv") || source.includes("paper") || source.includes("research")) {
@@ -84,7 +93,8 @@ export default function Home() {
   const [aiItems, setAiItems] = useState([]);
   const [skills, setSkills] = useState([]);
   const [skillsView, setSkillsView] = useState("trending");
-  const [skillsMeta, setSkillsMeta] = useState({ snapshot: null, source: "skills.sh" });
+  const [skillsMeta, setSkillsMeta] = useState({ snapshot: null, source: "skills.sh", total: 0 });
+  const [skillsLimit, setSkillsLimit] = useState(12);
   const [searchText, setSearchText] = useState("");
   const [language, setLanguage] = useState("全部");
   const [period, setPeriod] = useState("weekly");
@@ -93,6 +103,7 @@ export default function Home() {
   const [digestText, setDigestText] = useState("");
   const [digestLoading, setDigestLoading] = useState(false);
   const weeklyRef = useRef(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const debouncedSearch = useMemo(() => searchText.trim(), [searchText]);
 
@@ -140,23 +151,24 @@ export default function Home() {
       async function loadSkills() {
         try {
           const res = await API.request(
-            `/api/skills${buildQuery({ list: skillsView, q: debouncedSearch, limit: "12" })}`
+            `/api/skills${buildQuery({ list: skillsView, q: debouncedSearch, limit: String(skillsLimit) })}`
           );
           setSkills(res.data.list || []);
           setSkillsMeta({
             snapshot: res.data.snapshot_date || null,
             source: res.data.source || "skills.sh",
+            total: Number(res.data.total) || 0,
           });
         } catch (error) {
           setSkills([]);
-          setSkillsMeta({ snapshot: null, source: "skills.sh" });
+          setSkillsMeta({ snapshot: null, source: "skills.sh", total: 0 });
         }
       }
       loadSkills();
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [skillsView, debouncedSearch]);
+  }, [skillsView, debouncedSearch, skillsLimit]);
 
   const weeklyData = weekly;
   const trendingData = trending;
@@ -167,21 +179,84 @@ export default function Home() {
     [skillsView]
   );
 
+  const heroLeftSpring = useSpring({
+    from: { opacity: 0, y: 18 },
+    to: { opacity: 1, y: 0 },
+    config: { tension: 220, friction: 24 },
+    immediate: prefersReducedMotion,
+  });
+
+  const heroRightSpring = useSpring({
+    from: { opacity: 0, y: 24 },
+    to: { opacity: 1, y: 0 },
+    delay: 120,
+    config: { tension: 220, friction: 26 },
+    immediate: prefersReducedMotion,
+  });
+
+  const heroFooterSpring = useSpring({
+    from: { opacity: 0, y: 16 },
+    to: { opacity: 1, y: 0 },
+    delay: 220,
+    config: { tension: 210, friction: 26 },
+    immediate: prefersReducedMotion,
+  });
+
+  const weeklyTrail = useTrail(weeklyData.length, {
+    from: { opacity: 0, y: 12 },
+    to: { opacity: 1, y: 0 },
+    trail: 60,
+    delay: 120,
+    config: { tension: 210, friction: 26 },
+    immediate: prefersReducedMotion,
+  });
+
+  const trendingTrail = useTrail(trendingData.length, {
+    from: { opacity: 0, y: 10 },
+    to: { opacity: 1, y: 0 },
+    trail: 50,
+    delay: 120,
+    config: { tension: 210, friction: 26 },
+    immediate: prefersReducedMotion,
+  });
+
+  const skillsTrail = useTrail(skillsData.length, {
+    from: { opacity: 0, y: 10 },
+    to: { opacity: 1, y: 0 },
+    trail: 45,
+    delay: 120,
+    config: { tension: 210, friction: 26 },
+    immediate: prefersReducedMotion,
+  });
+
+  const aiTrail = useTrail(aiData.length, {
+    from: { opacity: 0, y: 10 },
+    to: { opacity: 1, y: 0 },
+    trail: 40,
+    delay: 120,
+    config: { tension: 210, friction: 26 },
+    immediate: prefersReducedMotion,
+  });
+  const AnimatedDiv = animated.div;
+
   const skillHighlights = useMemo(() => {
     if (!skillsData.length) return [];
     const maxInstalls = Math.max(...skillsData.map((item) => Number(item.installs) || 0), 1);
-    return skillsData.slice(0, 4).map((item) => {
+    return skillsData.slice(0, 8).map((item) => {
       const installs = Number(item.installs) || 0;
       const heat = clamp(Math.round((installs / maxInstalls) * 100), 18, 100);
       const hasChange = item.change !== null && item.change !== undefined;
       const trend = hasChange
         ? `${item.change >= 0 ? "+" : "-"}${formatCompactNumber(Math.abs(item.change))}`
         : "--";
+      const skillPath = buildSkillPath(item);
+      const label = item.name || item.skill_id || skillPath;
       return {
         ...item,
         heat,
         trend,
-        label: item.name || item.skill_id || "未命名 Skill",
+        label,
+        skillPath,
       };
     });
   }, [skillsData]);
@@ -216,7 +291,27 @@ export default function Home() {
       };
     });
 
-    const rawItems = [...repoItems, ...aiItemsForRadar].filter((item) => item.label);
+    const skillsForRadar = skillsData.slice(0, 8).map((item) => {
+      const skillPath = buildSkillPath(item);
+      const installs = Number(item.installs) || 0;
+      const change = Number(item.change) || 0;
+      const hasChange = item.change !== null && item.change !== undefined;
+      const trend = hasChange
+        ? `${item.change >= 0 ? "+" : "-"}${formatCompactNumber(Math.abs(item.change))}`
+        : null;
+      const score = Math.max(1, installs + Math.max(0, change) * 150);
+      const detailParts = [`${formatCompactNumber(installs)} installs`];
+      if (trend) detailParts.push(trend);
+      return {
+        type: "skill",
+        label: skillPath,
+        detail: detailParts.join(" · "),
+        url: item.skill_url,
+        score,
+      };
+    });
+
+    const rawItems = [...repoItems, ...aiItemsForRadar, ...skillsForRadar].filter((item) => item.label);
     if (!rawItems.length) return [];
 
     const scored = rawItems.map((item) => ({
@@ -240,7 +335,7 @@ export default function Home() {
         labelShort: truncateText(item.label, 24),
       };
     });
-  }, [trendingData, aiData]);
+  }, [trendingData, aiData, skillsData]);
 
   const handleViewWeekly = () => {
     setPeriod("weekly");
@@ -290,7 +385,13 @@ export default function Home() {
       />
       <main>
         <section className="hero">
-          <div className="hero-left">
+          <AnimatedDiv
+            className="hero-left"
+            style={{
+              opacity: heroLeftSpring.opacity,
+              transform: heroLeftSpring.y.to((value) => `translate3d(0, ${value}px, 0)`),
+            }}
+          >
             <div className="eyebrow">AI 与 Agent 热点</div>
             <h1>把 AI 热点与 Agent 机器人信号汇成一张周报雷达。</h1>
             <p className="hero-copy">
@@ -317,8 +418,14 @@ export default function Home() {
                 <p className="stat-label">每日推送</p>
               </div>
             </div>
-          </div>
-          <div className="hero-right">
+          </AnimatedDiv>
+          <AnimatedDiv
+            className="hero-right"
+            style={{
+              opacity: heroRightSpring.opacity,
+              transform: heroRightSpring.y.to((value) => `translate3d(0, ${value}px, 0)`),
+            }}
+          >
             <div className="radar-card">
               <div className="radar-header">
                 <div>
@@ -328,10 +435,15 @@ export default function Home() {
                 <span className="chip">实时</span>
               </div>
             <div className="radar-graphic">
-              <div className="ring"></div>
-              <div className="ring"></div>
-              <div className="ring"></div>
-              <div className="sweep"></div>
+              <div className="radar-background">
+                <div className="ring"></div>
+                <div className="ring"></div>
+                <div className="ring"></div>
+                <div className="sweep"></div>
+                {!radarPoints.length && (
+                  <div className="radar-empty">暂无信号</div>
+                )}
+              </div>
                 {radarPoints.map((item, index) => {
                   const BlipTag = item.url ? "a" : "div";
                   return (
@@ -353,9 +465,6 @@ export default function Home() {
                     </BlipTag>
                   );
                 })}
-                {!radarPoints.length && (
-                  <div className="radar-empty">暂无信号</div>
-                )}
               </div>
               <div className="radar-foot">
                 <p>
@@ -364,8 +473,14 @@ export default function Home() {
                 <button className="ghost small">打开流</button>
               </div>
             </div>
-          </div>
-          <div className="hero-footer">
+          </AnimatedDiv>
+          <AnimatedDiv
+            className="hero-footer"
+            style={{
+              opacity: heroFooterSpring.opacity,
+              transform: heroFooterSpring.y.to((value) => `translate3d(0, ${value}px, 0)`),
+            }}
+          >
             <div className="radar-insights">
               <div className="radar-insights-head">
                 <p className="radar-title small">热门 Skills</p>
@@ -383,7 +498,9 @@ export default function Home() {
                     </div>
                     <div className="radar-insight-tags">
                       <span>{`#${String(item.rank || 0).padStart(2, "0")}`}</span>
-                      {item.source && <span>{item.source}</span>}
+                      {(item.skillPath || item.source) && (
+                        <span>{truncateText(item.skillPath || item.source, 26)}</span>
+                      )}
                       <span>{`${formatCompactNumber(item.installs)} installs`}</span>
                     </div>
                   </div>
@@ -393,7 +510,7 @@ export default function Home() {
                 )}
               </div>
             </div>
-          </div>
+          </AnimatedDiv>
         </section>
 
         <section id="weekly" className="weekly" ref={weeklyRef}>
@@ -415,14 +532,23 @@ export default function Home() {
             </div>
           </div>
           <div className="weekly-grid">
-            {weeklyData.map((item, index) => {
+            {weeklyTrail.map((style, index) => {
+              const item = weeklyData[index];
+              if (!item) return null;
               const title = `${item.owner}/${item.name}`;
               const desc = item.description || "暂无描述";
               const delta = `+${formatCompactNumber(item.stars_delta)}`;
               const repoUrl = item.url;
               const tags = [item.language || "AI", "Weekly", "Trending"];
               return (
-                <div key={`${title}-${index}`} className={`weekly-card ${index === 1 ? "featured" : ""}`}>
+                <AnimatedDiv
+                  key={`${title}-${index}`}
+                  className={`weekly-card ${index === 1 ? "featured" : ""}`}
+                  style={{
+                    opacity: style.opacity,
+                    transform: style.y.to((value) => `translate3d(0, ${value}px, 0)`),
+                  }}
+                >
                   <div className="weekly-meta">
                     <p className="weekly-rank">#{String(index + 1).padStart(2, "0")}</p>
                     <span className="chip">{delta}</span>
@@ -447,7 +573,7 @@ export default function Home() {
                       <a href={repoUrl} target="_blank" rel="noreferrer">GitHub</a>
                     </div>
                   )}
-                </div>
+                </AnimatedDiv>
               );
             })}
           </div>
@@ -475,10 +601,19 @@ export default function Home() {
             </div>
           </div>
           <div className="trending-list">
-            {trendingData.map((item, index) => {
+            {trendingTrail.map((style, index) => {
+              const item = trendingData[index];
+              if (!item) return null;
               const repoUrl = item.url;
               return (
-                <div className="trending-card" key={`${item.owner}-${item.name}`}>
+                <AnimatedDiv
+                  className="trending-card"
+                  key={`${item.owner}-${item.name}`}
+                  style={{
+                    opacity: style.opacity,
+                    transform: style.y.to((value) => `translate3d(0, ${value}px, 0)`),
+                  }}
+                >
                   <div className="trending-rank">#{String(index + 1).padStart(2, "0")}</div>
                   <div className="trending-meta">
                     <h3>
@@ -502,7 +637,7 @@ export default function Home() {
                     <span>{formatCompactNumber(item.stars)} 星标</span>
                     <span>+{formatCompactNumber(item.stars_delta)} 本周</span>
                   </div>
-                </div>
+                </AnimatedDiv>
               );
             })}
           </div>
@@ -532,16 +667,27 @@ export default function Home() {
             </div>
           </div>
           <div className="skills-grid">
-            {skillsData.map((item) => {
+            {skillsTrail.map((style, index) => {
+              const item = skillsData[index];
+              if (!item) return null;
               const changeText = item.change !== null && item.change !== undefined
                 ? `${item.change >= 0 ? "+" : "-"}${formatCompactNumber(Math.abs(item.change))}`
                 : "--";
+              const skillTitle = item.name || item.skill_id || "未命名 Skill";
+              const skillPath = buildSkillPath(item);
               return (
-              <div className="skill-card" key={`${item.source}-${item.skill_id}`}>
+              <AnimatedDiv
+                className="skill-card"
+                key={`${item.source}-${item.skill_id}`}
+                style={{
+                  opacity: style.opacity,
+                  transform: style.y.to((value) => `translate3d(0, ${value}px, 0)`),
+                }}
+              >
                 <div className="skill-head">
                   <div>
-                    <p className="skill-title">{item.name || item.skill_id}</p>
-                    <p className="skill-desc">{item.source}</p>
+                    <p className="skill-title">{skillTitle}</p>
+                    <p className="skill-desc">{skillPath}</p>
                   </div>
                   <div className="skill-score">
                     <span className="score-value">{formatCompactNumber(item.installs)}</span>
@@ -578,8 +724,23 @@ export default function Home() {
                     </a>
                   )}
                 </div>
-              </div>
+              </AnimatedDiv>
             )})}
+          </div>
+          <div className="skills-actions">
+            {(skillsMeta.total ? skillsData.length < skillsMeta.total : skillsData.length >= skillsLimit) && (
+              <button
+                className="ghost"
+                onClick={() => setSkillsLimit((prev) => Math.min(prev + 12, 60))}
+              >
+                查看更多
+              </button>
+            )}
+            {skillsLimit > 12 && (
+              <button className="ghost" onClick={() => setSkillsLimit(12)}>
+                收起
+              </button>
+            )}
           </div>
           {!skillsData.length && (
             <p className="empty-state">暂无匹配的技能榜单</p>
@@ -605,29 +766,40 @@ export default function Home() {
             </div>
           </div>
           <div className="ai-feed">
-            {aiData.map((item, index) => (
-              <div className="ai-item" key={`${item.title}-${index}`}>
-                <div className="ai-time">{formatTime(item.published_at || item.time)}</div>
-                <div>
-                  <div className="ai-title">
-                    {item.url ? (
-                      <a className="link-title" href={item.url} target="_blank" rel="noreferrer">
-                        {item.title}
-                      </a>
-                    ) : (
-                      item.title
+            {aiTrail.map((style, index) => {
+              const item = aiData[index];
+              if (!item) return null;
+              return (
+                <AnimatedDiv
+                  className="ai-item"
+                  key={`${item.title}-${index}`}
+                  style={{
+                    opacity: style.opacity,
+                    transform: style.y.to((value) => `translate3d(0, ${value}px, 0)`),
+                  }}
+                >
+                  <div className="ai-time">{formatTime(item.published_at || item.time)}</div>
+                  <div>
+                    <div className="ai-title">
+                      {item.url ? (
+                        <a className="link-title" href={item.url} target="_blank" rel="noreferrer">
+                          {item.title}
+                        </a>
+                      ) : (
+                        item.title
+                      )}
+                    </div>
+                    <div className="ai-sub">{item.source}</div>
+                    {item.url && (
+                      <div className="source-links">
+                        <a href={item.url} target="_blank" rel="noreferrer">原文</a>
+                      </div>
                     )}
                   </div>
-                  <div className="ai-sub">{item.source}</div>
-                  {item.url && (
-                    <div className="source-links">
-                      <a href={item.url} target="_blank" rel="noreferrer">原文</a>
-                    </div>
-                  )}
-                </div>
-                <div className="ai-tag">{classifyAiTag(item)}</div>
-              </div>
-            ))}
+                  <div className="ai-tag">{classifyAiTag(item)}</div>
+                </AnimatedDiv>
+              );
+            })}
           </div>
           {!aiData.length && (
             <p className="empty-state">暂无匹配 AI 资讯</p>

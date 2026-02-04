@@ -47,11 +47,14 @@
 - `web/src/main.jsx`
 - `web/src/styles.css`
 - `web/src/lib/api.js`
+- `web/src/lib/usePrefersReducedMotion.js`
 - `web/src/components/Topbar.jsx`
 - `web/src/pages/Home.jsx`
 - `web/src/pages/Auth.jsx`
 - `web/src/pages/Settings.jsx`
 - `public/push-channels.html`
+- `web/package.json`
+- `web/package-lock.json`
 
 ## 字段映射
 | 前端字段 | 后端字段 | 说明 |
@@ -153,6 +156,15 @@
 - 样式：`web/src/styles.css`
   - Skills 列表与雷达小榜单样式优化
 
+## 本次变更（Skills 模块增强）
+- 前端：`web/src/pages/Home.jsx`
+  - Skills 模块展示原始路径（owner/repo/skill）
+  - Skills 进入雷达点阵并增强提示信息
+  - Skills 榜单支持查看更多/收起
+- 样式：`web/src/styles.css`
+  - 新增 Skills 雷达点样式
+  - Skills 列表补充交互与长路径显示优化
+
 ## 本次变更（管理员权限修复）
 - 后端：`src/utils/auth.js`
   - 解析 `ADMIN_EMAIL` / `ADMIN_EMAILS` 配置并支持按邮箱自动同步管理员角色
@@ -191,3 +203,13 @@
   - 未配置时展示邮箱密码登录提示
 - 前端：`web/src/App.jsx`
   - 兼容 `/auth.html` 旧路径，避免历史链接失效
+
+## 本次变更（页面动效优化）
+- 依赖：`web/package.json`
+  - 引入 `@react-spring/web` 作为 React 动效库
+- 组件：`web/src/components/Topbar.jsx`
+  - 顶栏入场动效与导航/操作区的轻量过渡
+- 页面：`web/src/pages/Home.jsx`
+  - Hero 区与各榜单列表的渐入与轻量错峰动效
+- 公共：`web/src/lib/usePrefersReducedMotion.js`
+  - 依据系统“减少动态效果”设置自动关闭动效
