@@ -357,38 +357,40 @@ export default function Home() {
                   <div className="radar-empty">暂无信号</div>
                 )}
               </div>
-              <div className="radar-insights">
-                <div className="radar-insights-head">
-                  <p className="radar-title small">热门 Skills</p>
-                  <span className="chip muted">热度榜</span>
-                </div>
-                <div className="radar-insight-list">
-                  {skillHighlights.map((item) => (
-                    <div className="radar-insight" key={`${item.source}-${item.skill_id}`}>
-                      <div className="radar-insight-row">
-                        <span className="radar-insight-title">{truncateText(item.label, 18)}</span>
-                        <span className="radar-insight-trend">{item.trend}</span>
-                      </div>
-                      <div className="radar-insight-bar">
-                        <span style={{ width: `${item.heat}%` }}></span>
-                      </div>
-                      <div className="radar-insight-tags">
-                        <span>{`#${String(item.rank || 0).padStart(2, "0")}`}</span>
-                        {item.source && <span>{item.source}</span>}
-                        <span>{`${formatCompactNumber(item.installs)} installs`}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {!skillHighlights.length && (
-                    <div className="radar-insight-empty">暂无技能热度</div>
-                  )}
-                </div>
-              </div>
               <div className="radar-foot">
                 <p>
                   下次更新 <strong>17 分钟</strong>
                 </p>
                 <button className="ghost small">打开流</button>
+              </div>
+            </div>
+          </div>
+          <div className="hero-footer">
+            <div className="radar-insights">
+              <div className="radar-insights-head">
+                <p className="radar-title small">热门 Skills</p>
+                <span className="chip muted">24H 热度榜</span>
+              </div>
+              <div className="radar-insight-list">
+                {skillHighlights.map((item) => (
+                  <div className="radar-insight" key={`${item.source}-${item.skill_id}`}>
+                    <div className="radar-insight-row">
+                      <span className="radar-insight-title">{truncateText(item.label, 18)}</span>
+                      <span className="radar-insight-trend">{item.trend}</span>
+                    </div>
+                    <div className="radar-insight-bar">
+                      <span style={{ width: `${item.heat}%` }}></span>
+                    </div>
+                    <div className="radar-insight-tags">
+                      <span>{`#${String(item.rank || 0).padStart(2, "0")}`}</span>
+                      {item.source && <span>{item.source}</span>}
+                      <span>{`${formatCompactNumber(item.installs)} installs`}</span>
+                    </div>
+                  </div>
+                ))}
+                {!skillHighlights.length && (
+                  <div className="radar-insight-empty">暂无技能热度</div>
+                )}
               </div>
             </div>
           </div>

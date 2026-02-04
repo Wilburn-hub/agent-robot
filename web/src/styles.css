@@ -308,10 +308,15 @@ main {
 
 .hero {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: 1.2fr 1fr;
   gap: 42px;
   align-items: center;
   padding-top: 30px;
+}
+
+.hero-footer {
+  grid-column: 1 / -1;
+  margin-top: 24px;
 }
 
 .eyebrow {
@@ -415,7 +420,7 @@ main {
 .radar-graphic {
   width: 100%;
   aspect-ratio: 1 / 1;
-  margin: 18px 0;
+  margin: 12px 0;
   border-radius: 50%;
   border: 1px solid rgba(88, 242, 201, 0.3);
   position: relative;
@@ -536,22 +541,38 @@ main {
   gap: 12px;
 }
 
+.radar-insight-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
 .radar-insights-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.radar-insight-list {
-  display: grid;
-  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(88, 242, 201, 0.1);
 }
 
 .radar-insight {
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: rgba(10, 16, 24, 0.72);
-  border: 1px solid rgba(31, 43, 61, 0.65);
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: rgba(16, 22, 30, 0.45);
+  border: 1px solid rgba(88, 242, 201, 0.12);
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.radar-insight:hover {
+  background: rgba(88, 242, 201, 0.08);
+  border-color: rgba(88, 242, 201, 0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
 }
 
 .radar-insight-row {
@@ -565,6 +586,9 @@ main {
 
 .radar-insight-title {
   color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 
 .radar-insight-trend {
@@ -573,19 +597,31 @@ main {
 }
 
 .radar-insight-bar {
-  height: 6px;
+  height: 4px;
   border-radius: 999px;
-  background: rgba(31, 43, 61, 0.8);
-  margin: 8px 0 6px;
+  background: rgba(31, 43, 61, 0.5);
+  margin: 12px 0 10px;
   overflow: hidden;
+  position: relative;
 }
 
 .radar-insight-bar span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, rgba(88, 242, 201, 0.9), rgba(199, 255, 75, 0.95));
-  box-shadow: 0 0 12px rgba(199, 255, 75, 0.4);
+  background: linear-gradient(90deg, #58f2c9, #c7ff4b);
+  box-shadow: 0 0 12px rgba(88, 242, 201, 0.5);
+  position: relative;
+}
+
+.radar-insight-bar span::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 30px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2));
 }
 
 .radar-insight-tags {
@@ -597,12 +633,19 @@ main {
 }
 
 .radar-insight-tags span {
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(31, 43, 61, 0.65);
-  background: rgba(14, 22, 32, 0.75);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(88, 242, 201, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.05em;
+  font-size: 10px;
+  color: var(--muted);
+  transition: all 0.3s ease;
+}
+
+.radar-insight:hover .radar-insight-tags span {
+  border-color: rgba(88, 242, 201, 0.2);
+  color: var(--ink);
 }
 
 .radar-insight-empty {
@@ -1249,6 +1292,7 @@ main {
 .helper {
   font-size: 12px;
   color: var(--muted);
+  margin-top: 12px;
 }
 
 .settings-hero {

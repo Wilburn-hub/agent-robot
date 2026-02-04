@@ -151,9 +151,11 @@ export default function Auth() {
                   </button>
                 )}
               </div>
-              <p className="helper">
-                {oauthEnabled ? "点击 GitHub 授权将自动创建账号并绑定。" : "暂未配置 GitHub 授权，仅支持邮箱密码登录。"}
-              </p>
+              {oauthEnabled && (
+                <p className="helper">
+                  点击 GitHub 授权将自动创建账号并绑定。
+                </p>
+              )}
             </form>
 
             <form className={`auth-form ${mode === "register" ? "active" : ""}`}>
