@@ -104,6 +104,25 @@ router.post("/channels/wechat", requireAuth, (req, res) => {
   return res.json({ code: 200, msg: "success" });
 });
 
+router.post("/channels/feishu", requireAuth, (req, res) => {
+  const { name, webhook, secret, active = 1 } = req.body;
+  const existing = db.prepare("SELECT * FROM push_channels WHERE user_id = ? AND type = 'feishu'").get(req.user.id);
+  if (existing) {
+    db.prepare("UPDATE push_channels SET name = ?, webhook = ?, secret = ?, active = ? WHERE id = ?").run(
+      name,
+      webhook,
+      secret,
+      active ? 1 : 0,
+      existing.id
+    );
+  } else {
+    db.prepare(
+      "INSERT INTO push_channels (user_id, type, name, webhook, secret, active) VALUES (?, 'feishu', ?, ?, ?, ?)"
+    ).run(req.user.id, name, webhook, secret, active ? 1 : 0);
+  }
+  return res.json({ code: 200, msg: "success" });
+});
+
 router.post("/channels/:type/test", requireAuth, async (req, res) => {
   const { type } = req.params;
   const channel = db

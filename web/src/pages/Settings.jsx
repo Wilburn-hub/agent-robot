@@ -20,6 +20,7 @@ export default function Settings() {
     papersLimit: 5,
   });
   const [wecom, setWecom] = useState({ name: "", webhook: "", active: true });
+  const [feishu, setFeishu] = useState({ name: "", webhook: "", secret: "", active: true });
   const [wechat, setWechat] = useState({ appId: "", appSecret: "", templateId: "", openids: "", templateJson: "", active: true });
   const [activeChannel, setActiveChannel] = useState("wecom");
   const [sources, setSources] = useState([]);
@@ -70,6 +71,16 @@ export default function Settings() {
           });
         }
 
+        const feishuChannel = channels.find((item) => item.type === "feishu");
+        if (feishuChannel) {
+          setFeishu({
+            name: feishuChannel.name || "",
+            webhook: feishuChannel.webhook || "",
+            secret: feishuChannel.secret || "",
+            active: Boolean(feishuChannel.active),
+          });
+        }
+
         const wechatChannel = channels.find((item) => item.type === "wechat");
         if (wechatChannel) {
           setWechat({
@@ -103,7 +114,7 @@ export default function Settings() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const channel = params.get("channel");
-    if (channel === "wechat" || channel === "wecom") {
+    if (channel === "wechat" || channel === "wecom" || channel === "feishu") {
       setActiveChannel(channel);
       setTimeout(() => {
         channelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -223,17 +234,34 @@ export default function Settings() {
     }
   };
 
-  const [testLoading, setTestLoading] = useState(false);
-
-  const testWecom = async () => {
-    setTestLoading(true);
+  const saveFeishu = async () => {
     try {
-      await API.request("/api/channels/wecom/test", { method: "POST" });
+      await API.request("/api/channels/feishu", {
+        method: "POST",
+        body: JSON.stringify({
+          name: feishu.name,
+          webhook: feishu.webhook,
+          secret: feishu.secret,
+          active: feishu.active,
+        }),
+      });
+      alert("飞书通道已保存");
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const [testLoading, setTestLoading] = useState("");
+
+  const testChannel = async (type) => {
+    setTestLoading(type);
+    try {
+      await API.request(`/api/channels/${type}/test`, { method: "POST" });
       alert("测试推送已发送");
     } catch (error) {
       alert(error.message);
     } finally {
-      setTestLoading(false);
+      setTestLoading("");
     }
   };
 
@@ -248,7 +276,7 @@ export default function Settings() {
           </div>
           <div className="hero-stats">
             <div>
-              <p className="stat-value">2</p>
+              <p className="stat-value">3</p>
               <p className="stat-label">可用通道</p>
             </div>
             <div>
@@ -291,7 +319,7 @@ export default function Settings() {
 
           <div className="panel" ref={channelRef}>
             <p className="panel-title">推送渠道</p>
-            <p className="panel-sub">为每个用户绑定自己的企微机器人或公众号。</p>
+            <p className="panel-sub">为每个用户绑定自己的企微机器人、飞书机器人或公众号。</p>
             <div className="panel-help">
               <div>
                 <p className="help-title">不知道怎么填？</p>
@@ -307,6 +335,12 @@ export default function Settings() {
                 onClick={() => setActiveChannel("wecom")}
               >
                 企微机器人
+              </button>
+              <button
+                className={activeChannel === "feishu" ? "active" : ""}
+                onClick={() => setActiveChannel("feishu")}
+              >
+                飞书机器人
               </button>
               <button
                 className={activeChannel === "wechat" ? "active" : ""}
@@ -348,10 +382,68 @@ export default function Settings() {
                 </div>
               </div>
               <div className="form-actions">
-                <button className="ghost" type="button" onClick={testWecom} disabled={testLoading}>
-                  {testLoading ? "推送中..." : "测试推送"}
+                <button
+                  className="ghost"
+                  type="button"
+                  onClick={() => testChannel("wecom")}
+                  disabled={Boolean(testLoading)}
+                >
+                  {testLoading === "wecom" ? "推送中..." : "测试推送"}
                 </button>
                 <button className="primary" type="button" onClick={saveWecom}>保存通道</button>
+              </div>
+            </div>
+
+            <div className={`tab-panel ${activeChannel === "feishu" ? "active" : ""}`}>
+              <div className="field">
+                <label>Webhook 地址</label>
+                <input
+                  type="text"
+                  placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."
+                  value={feishu.webhook}
+                  onChange={(event) => setFeishu({ ...feishu, webhook: event.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label>签名密钥（可选）</label>
+                <input
+                  type="password"
+                  placeholder="机器人安全设置中的密钥"
+                  value={feishu.secret}
+                  onChange={(event) => setFeishu({ ...feishu, secret: event.target.value })}
+                />
+              </div>
+              <div className="field-row">
+                <div className="field">
+                  <label>备注名称</label>
+                  <input
+                    type="text"
+                    placeholder="飞书日报群"
+                    value={feishu.name}
+                    onChange={(event) => setFeishu({ ...feishu, name: event.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>启用状态</label>
+                  <select
+                    value={feishu.active ? "启用" : "暂停"}
+                    onChange={(event) => setFeishu({ ...feishu, active: event.target.value === "启用" })}
+                  >
+                    <option>启用</option>
+                    <option>暂停</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-actions">
+                <button
+                  className="ghost"
+                  type="button"
+                  onClick={() => testChannel("feishu")}
+                  disabled={Boolean(testLoading)}
+                >
+                  {testLoading === "feishu" ? "推送中..." : "测试推送"}
+                </button>
+                <button className="primary" type="button" onClick={saveFeishu}>保存通道</button>
               </div>
             </div>
 

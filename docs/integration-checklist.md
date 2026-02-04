@@ -25,7 +25,8 @@
 | email | users.email | 登录邮箱 |
 | password | users.password_hash | bcrypt 哈希 |
 | githubId | users.github_id | GitHub 用户 ID |
-| webhook | push_channels.webhook | 企微 Webhook |
+| webhook | push_channels.webhook | 企微/飞书 Webhook |
+| secret | push_channels.secret | 飞书机器人签名密钥 |
 | appId | push_channels.app_id | 公众号 AppID |
 | appSecret | push_channels.app_secret | 公众号 Secret |
 | templateId | push_channels.template_id | 模板消息 ID |

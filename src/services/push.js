@@ -1,4 +1,5 @@
 const axios = require("axios");
+const crypto = require("crypto");
 const { buildDigestText, buildDigestSummary } = require("./digest");
 
 const wechatTokenCache = new Map();
@@ -106,6 +107,69 @@ async function sendWecomMessage(webhook, text) {
   return results.length === 1 ? results[0] : results;
 }
 
+function buildFeishuSign(secret, timestamp) {
+  const stringToSign = `${timestamp}\n${secret}`;
+  return crypto.createHmac("sha256", stringToSign).update("").digest("base64");
+}
+
+async function sendFeishuMessage(webhook, text, secret) {
+  if (!webhook) {
+    throw new Error("Webhook 未配置");
+  }
+
+  // 飞书文本消息长度有限，这里保守控制在 9000 字节以内
+  const MAX_BYTES = 9000;
+  const chunks = splitTextByBytes(text, MAX_BYTES);
+  const results = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    let content = chunks[i];
+    if (chunks.length > 1) {
+      content = `[${i + 1}/${chunks.length}]\n${content}`;
+    }
+
+    const payload = {
+      msg_type: "text",
+      content: { text: content },
+    };
+
+    if (secret) {
+      const timestamp = Math.floor(Date.now() / 1000);
+      payload.timestamp = timestamp;
+      payload.sign = buildFeishuSign(secret, timestamp);
+    }
+
+    try {
+      const response = await axios.post(webhook, payload, {
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = response.data;
+      if (data && typeof data.code !== "undefined" && data.code !== 0) {
+        throw new Error(`飞书返回错误: ${data.code} ${data.msg || ""}`.trim());
+      }
+      if (data && typeof data.StatusCode !== "undefined" && data.StatusCode !== 0) {
+        throw new Error(`飞书返回错误: ${data.StatusCode} ${data.StatusMessage || ""}`.trim());
+      }
+      results.push(data);
+    } catch (error) {
+      const data = error.response?.data;
+      if (data && typeof data.code !== "undefined") {
+        throw new Error(`飞书返回错误: ${data.code} ${data.msg || ""}`.trim());
+      }
+      if (data && typeof data.StatusCode !== "undefined") {
+        throw new Error(`飞书返回错误: ${data.StatusCode} ${data.StatusMessage || ""}`.trim());
+      }
+      throw error;
+    }
+
+    if (i < chunks.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+
+  return results.length === 1 ? results[0] : results;
+}
+
 async function getWeChatToken(appId, appSecret) {
   if (!appId || !appSecret) {
     throw new Error("AppID 或 AppSecret 未配置");
@@ -184,6 +248,13 @@ async function sendDigestByChannel(channel, contentConfig = {}, extra = {}) {
     });
     return sendWecomMessage(channel.webhook, text);
   }
+  if (channel.type === "feishu") {
+    const text = await buildDigestText({
+      ...contentConfig,
+      userId: extra.userId || channel.user_id,
+    });
+    return sendFeishuMessage(channel.webhook, text, channel.secret);
+  }
   if (channel.type === "wechat") {
     return sendWeChatTemplateMessage(channel, contentConfig, extra);
   }
@@ -192,6 +263,7 @@ async function sendDigestByChannel(channel, contentConfig = {}, extra = {}) {
 
 module.exports = {
   sendWecomMessage,
+  sendFeishuMessage,
   sendWeChatTemplateMessage,
   sendDigestByChannel,
 };

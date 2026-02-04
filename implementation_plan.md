@@ -3,6 +3,9 @@
 ## 目标描述
 - 实现 AI 机器人周报的自动化部署流程（GitHub Actions + 阿里云 VPS + PM2）。
 - 参考 **GYM** 项目的成熟经验进行流水线优化（包含步骤标识、Emoji、健康检查等）。
+- 修复生产环境管理员权限无法识别的问题，支持通过配置邮箱自动提升管理员。
+- 完善飞书群机器人（Webhook）推送通道，支持签名安全密钥、测试推送与前端配置。
+- 完善数据刷新与定时任务：新增数据刷新任务、清理任务、执行状态记录与防重策略。
 
 ## 用户审核项
 
@@ -26,10 +29,17 @@
 - `src/services/ai.js`
 - `src/services/digest.js`
 - `src/services/push.js`
+- `src/services/refresh.js`
 - `src/jobs/scheduler.js`
 - `src/routes/auth.js`
 - `src/routes/data.js`
 - `src/routes/settings.js`
+- `src/routes/admin.js`
+- `docs/push-channels.md`
+- `docs/api.md`
+- `docs/integration-checklist.md`
+- `.env`
+- `.env.example`
 - `web/index.html`
 - `web/vite.config.js`
 - `web/src/App.jsx`
@@ -40,6 +50,7 @@
 - `web/src/pages/Home.jsx`
 - `web/src/pages/Auth.jsx`
 - `web/src/pages/Settings.jsx`
+- `public/push-channels.html`
 
 ## 字段映射
 | 前端字段 | 后端字段 | 说明 |
@@ -49,6 +60,7 @@
 | name | users.name | 昵称 |
 | githubId | users.github_id | GitHub 用户 ID |
 | webhook | push_channels.webhook | 企微 Webhook |
+| feishuSecret | push_channels.secret | 飞书机器人签名密钥（可选） |
 | appId | push_channels.app_id | 公众号 AppID |
 | appSecret | push_channels.app_secret | 公众号 Secret |
 | templateId | push_channels.template_id | 模板消息 ID |
@@ -71,6 +83,7 @@
 - `GET /api/ai`
 - `POST /api/channels/wecom`
 - `POST /api/channels/wechat`
+- `POST /api/channels/feishu`
 - `POST /api/channels/:type/test`
 - `GET /api/settings`
 - `PUT /api/settings`
@@ -108,3 +121,27 @@
   - 将品牌图标设为返回首页的链接
 - 样式：`web/src/styles.css`
   - 增加品牌图标链接的交互样式
+
+## 本次变更（管理员权限修复）
+- 后端：`src/utils/auth.js`
+  - 解析 `ADMIN_EMAIL` / `ADMIN_EMAILS` 配置并支持按邮箱自动同步管理员角色
+- 后端：`src/routes/auth.js`
+  - 注册/登录/GitHub 登录后自动同步管理员角色
+- 后端：`src/db.js`
+  - 启动时同步管理员邮箱列表，避免线上重启前角色丢失
+- 配置：`.env` / `.env.example`
+  - 增加管理员邮箱配置项说明
+
+## 本次变更（飞书机器人对接）
+- 后端：`src/db.js`
+  - 为 `push_channels` 增加 `secret` 字段迁移
+- 后端：`src/services/push.js`
+  - 新增飞书 Webhook 推送与签名逻辑
+- 后端：`src/routes/settings.js`
+  - 新增飞书通道保存接口
+- 前端：`web/src/pages/Settings.jsx`
+  - 新增飞书通道表单、测试推送入口与路由参数支持
+- 文档：`docs/push-channels.md` / `public/push-channels.html`
+  - 补充飞书机器人配置说明与字段速查
+- 文档：`docs/api.md` / `docs/integration-checklist.md`
+  - 更新 API 清单与字段映射

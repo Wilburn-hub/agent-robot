@@ -2,7 +2,7 @@ const express = require("express");
 const axios = require("axios");
 const { randomUUID } = require("crypto");
 const db = require("../db");
-const { hashPassword, verifyPassword, signToken, requireAuth } = require("../utils/auth");
+const { hashPassword, verifyPassword, signToken, requireAuth, syncAdminRoleByEmail } = require("../utils/auth");
 
 const router = express.Router();
 
@@ -30,6 +30,7 @@ router.post("/register", (req, res) => {
   const user = db.prepare("SELECT * FROM users WHERE id = ?").get(info.lastInsertRowid);
 
   db.prepare("INSERT OR IGNORE INTO push_schedule (user_id) VALUES (?)").run(user.id);
+  syncAdminRoleByEmail(user.email);
 
   const token = signToken({ id: user.id, email: user.email, name: user.name });
   return res.json({ code: 200, msg: "success", data: { token, user: buildUserResponse(user) } });
@@ -47,6 +48,7 @@ router.post("/login", (req, res) => {
   if (!verifyPassword(password, user.password_hash)) {
     return res.status(400).json({ code: 400, msg: "账号或密码错误" });
   }
+  syncAdminRoleByEmail(user.email);
   const token = signToken({ id: user.id, email: user.email, name: user.name });
   return res.json({ code: 200, msg: "success", data: { token, user: buildUserResponse(user) } });
 });
@@ -139,6 +141,7 @@ router.get("/github/callback", async (req, res) => {
       db.prepare("INSERT OR IGNORE INTO push_schedule (user_id) VALUES (?)").run(user.id);
     }
 
+    syncAdminRoleByEmail(user.email);
     const token = signToken({ id: user.id, email: user.email, name: user.name });
     return res.redirect(`/auth.html?token=${token}`);
   } catch (error) {

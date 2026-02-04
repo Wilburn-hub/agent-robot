@@ -26,6 +26,7 @@ db.exec(`
     type TEXT NOT NULL,
     name TEXT,
     webhook TEXT,
+    secret TEXT,
     app_id TEXT,
     app_secret TEXT,
     template_id TEXT,
@@ -108,6 +109,12 @@ if (!aiItemsColumnNames.has("source_url")) {
   db.prepare("ALTER TABLE ai_items ADD COLUMN source_url TEXT").run();
 }
 
+const pushChannelColumns = db.prepare("PRAGMA table_info(push_channels)").all();
+const pushChannelColumnNames = new Set(pushChannelColumns.map((column) => column.name));
+if (!pushChannelColumnNames.has("secret")) {
+  db.prepare("ALTER TABLE push_channels ADD COLUMN secret TEXT").run();
+}
+
 // 迁移：为已有 users 表添加 role 字段
 const usersColumns = db.prepare("PRAGMA table_info(users)").all();
 const usersColumnNames = new Set(usersColumns.map((column) => column.name));
@@ -116,10 +123,28 @@ if (!usersColumnNames.has("role")) {
 }
 
 // 自动设置初始管理员 (针对线上环境手动同步角色)
-const adminEmails = ["liuweijia.vip@gmail.com", process.env.ADMIN_EMAIL].filter(Boolean);
+function normalizeEmail(email) {
+  return (email || "").trim().toLowerCase();
+}
+
+function parseAdminEmails() {
+  const sources = ["liuweijia.vip@gmail.com", process.env.ADMIN_EMAIL, process.env.ADMIN_EMAILS];
+  const emails = new Set();
+  sources.forEach((value) => {
+    if (!value) return;
+    value
+      .split(/[,;\\s]+/)
+      .map((item) => normalizeEmail(item))
+      .filter(Boolean)
+      .forEach((item) => emails.add(item));
+  });
+  return Array.from(emails);
+}
+
+const adminEmails = parseAdminEmails();
 if (adminEmails.length > 0) {
   const placeholders = adminEmails.map(() => "?").join(",");
-  db.prepare(`UPDATE users SET role = 'admin' WHERE email IN (${placeholders})`).run(...adminEmails);
+  db.prepare(`UPDATE users SET role = 'admin' WHERE lower(email) IN (${placeholders})`).run(...adminEmails);
 }
 
 module.exports = db;

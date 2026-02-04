@@ -8,7 +8,7 @@
 | AI 雷达流 | 列表 | 查询 | title, source, published_at, url | RSS 聚合 |
 | 登录/注册 | 表单 | 新增/登录 | email, password, name | JWT 登录 |
 | 设置中心 | 详情 | 查询/更新 | time, timezone, frequency, content, channels | 用户级配置 |
-| 推送通道 | 表单 | 新增/更新 | webhook/appId/appSecret/templateId/openids | 企微/公众号 |
+| 推送通道 | 表单 | 新增/更新 | webhook/secret/appId/appSecret/templateId/openids | 企微/飞书/公众号 |
 
 ## 🔌 API 需求清单
 
@@ -26,6 +26,7 @@
 | 简报预览 | GET | /api/digest/preview | topics, keywords | text |
 | 简报测试推送 | POST | /api/digest/send | - | text, results |
 | 保存企微通道 | POST | /api/channels/wecom | name, webhook, active | - |
+| 保存飞书通道 | POST | /api/channels/feishu | name, webhook, secret, active | - |
 | 保存公众号通道 | POST | /api/channels/wechat | appId, appSecret, templateId, openids, templateJson | - |
 | 测试推送 | POST | /api/channels/:type/test | - | 发送结果 |
 | 获取设置 | GET | /api/settings | - | schedule, channels |
@@ -198,6 +199,20 @@
 | appSecret | string | ✅ | Secret | "abcd" |
 | templateId | string | ✅ | 模板 ID | "tmpl" |
 | openids | string | ✅ | OpenID 列表 | "openid1,openid2" |
+
+### 保存飞书通道
+**请求信息**
+- **路径**: `POST /api/channels/feishu`
+- **权限**: 需登录
+- **描述**: 绑定飞书群聊自定义机器人 Webhook
+
+**请求参数**
+| 参数名 | 类型 | 必填 | 说明 | 示例 |
+|--------|------|------|------|------|
+| name | string | ❌ | 备注名称 | "飞书日报群" |
+| webhook | string | ✅ | 机器人 Webhook | "https://open.feishu.cn/open-apis/bot/v2/hook/..." |
+| secret | string | ❌ | 签名密钥（启用签名校验时必填） | "xxxx" |
+| active | boolean | ❌ | 启用状态 | true |
 | templateJson | string | ❌ | 模板 data JSON | "{...}" |
 
 ### 测试推送
