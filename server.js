@@ -25,6 +25,7 @@ const { startScheduler } = require("./src/jobs/scheduler");
 const authRouter = require("./src/routes/auth");
 const dataRouter = require("./src/routes/data");
 const settingsRouter = require("./src/routes/settings");
+const adminRouter = require("./src/routes/admin");
 const { fetchGitHubTrending } = require("./src/services/github");
 const { fetchAiFeedsForAllUsers } = require("./src/services/ai");
 
@@ -43,6 +44,7 @@ app.use(
 app.use("/api/auth", authRouter);
 app.use("/api", dataRouter);
 app.use("/api", settingsRouter);
+app.use("/api/admin", adminRouter);
 
 app.use(express.static(path.join(__dirname, "public")));
 

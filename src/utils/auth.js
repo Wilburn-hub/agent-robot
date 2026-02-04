@@ -34,10 +34,25 @@ function requireAuth(req, res, next) {
   }
 }
 
+function requireAdmin(req, res, next) {
+  // 需要先调用 requireAuth
+  if (!req.user) {
+    return res.status(401).json({ code: 401, msg: "未登录" });
+  }
+  // 从数据库获取最新的角色信息
+  const db = require("../db");
+  const user = db.prepare("SELECT role FROM users WHERE id = ?").get(req.user.id);
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({ code: 403, msg: "无权限访问" });
+  }
+  return next();
+}
+
 module.exports = {
   hashPassword,
   verifyPassword,
   signToken,
   verifyToken,
   requireAuth,
+  requireAdmin,
 };

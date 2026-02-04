@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>推送通道配置指南</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg-0: #0a0d10;
+        --bg-1: #101823;
+        --ink: #eaf2ff;
+        --muted: #9eb0c7;
+        --accent: #58f2c9;
+        --accent-2: #c7ff4b;
+        --line: #1f2b3d;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+        background: radial-gradient(circle at 20% 10%, rgba(88, 242, 201, 0.12), transparent 55%),
+          radial-gradient(circle at 80% 0%, rgba(199, 255, 75, 0.1), transparent 45%),
+          linear-gradient(130deg, var(--bg-0), var(--bg-1));
+        color: var(--ink);
+        min-height: 100vh;
+        padding: 48px 6vw 80px;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .wrap {
+        max-width: 920px;
+        margin: 0 auto;
+        display: grid;
+        gap: 28px;
+      }
+
+      header h1 {
+        font-size: clamp(26px, 3vw, 40px);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      header p {
+        margin-top: 10px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      section {
+        border: 1px solid rgba(31, 43, 61, 0.8);
+        border-radius: 20px;
+        padding: 22px;
+        background: rgba(10, 16, 24, 0.65);
+        display: grid;
+        gap: 12px;
+      }
+
+      h2 {
+        font-size: 18px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .steps {
+        display: grid;
+        gap: 8px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .tips {
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px dashed rgba(88, 242, 201, 0.4);
+        background: rgba(8, 12, 18, 0.6);
+        color: var(--muted);
+      }
+
+      .links {
+        display: grid;
+        gap: 6px;
+        font-size: 14px;
+      }
+
+      .field-list {
+        display: grid;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .field-list span {
+        color: var(--ink);
+      }
+
+      footer {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header>
+        <h1>推送通道配置指南</h1>
+        <p>本指南用于填写「推送渠道」配置，覆盖企业微信群机器人与公众号推送两种场景。</p>
+      </header>
+
+      <section>
+        <h2>企微机器人（Webhook）</h2>
+        <div class="steps">
+          <p>1. 在企业微信客户端进入目标群聊，打开「群机器人」并新建机器人。</p>
+          <p>2. 复制生成的 Webhook 地址（形如 <span>https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...</span>）。</p>
+          <p>3. 回到设置页粘贴 Webhook，填写备注名称，启用后点击「测试推送」。</p>
+        </div>
+        <div class="tips">
+          仅企业微信内部群支持添加群机器人；如果群聊权限受限，请联系群主或管理员。
+        </div>
+        <div class="links">
+          <a href="https://developer.work.weixin.qq.com/document/path/91770" target="_blank" rel="noreferrer">企业微信群机器人接口文档（官方）</a>
+          <a href="https://help.gitee.com/enterprise/code-manage/%E9%9B%86%E6%88%90%E4%B8%8E%E7%94%9F%E6%80%81/WebHook/WebHook%20%E5%AF%B9%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E7%9A%84%E6%94%AF%E6%8C%81" target="_blank" rel="noreferrer">企微机器人创建示例（含步骤）</a>
+        </div>
+      </section>
+
+      <section>
+        <h2>公众号推送（模板消息）</h2>
+        <div class="steps">
+          <p>1. 使用已认证的服务号，获取 <span>AppID / AppSecret</span>。</p>
+          <p>2. 在公众号后台「模板消息」中添加模板并获取模板 ID。</p>
+          <p>3. 收集需要接收的 <span>OpenID 列表</span>，按英文逗号分隔填写。</p>
+        </div>
+        <div class="tips">
+          模板消息仅用于服务通知，不支持营销内容；若后台显示「订阅通知」，请查看订阅通知文档。
+        </div>
+        <div class="links">
+          <a href="https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Template_Message_Interface.html" target="_blank" rel="noreferrer">模板消息接口文档（官方）</a>
+          <a href="https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Template_Message_Operation_Specifications.html" target="_blank" rel="noreferrer">模板消息规范说明</a>
+          <a href="https://developers.weixin.qq.com/doc/offiaccount/Subscription_Messages/intro.html" target="_blank" rel="noreferrer">订阅通知能力说明</a>
+        </div>
+      </section>
+
+      <section>
+        <h2>字段速查</h2>
+        <div class="field-list">
+          <div><span>企微机器人：</span>Webhook 地址、备注名称、启用状态</div>
+          <div><span>公众号模板消息：</span>AppID、AppSecret、模板消息 ID、OpenID 列表（可选模板 data JSON）</div>
+        </div>
+      </section>
+
+      <footer>
+        如果你仍不确定如何配置，建议先完成「企业微信群机器人」绑定，再逐步配置公众号推送。
+      </footer>
+    </main>
+  </body>
+</html>

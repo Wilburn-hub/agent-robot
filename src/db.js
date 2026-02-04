@@ -16,6 +16,7 @@ db.exec(`
     password_hash TEXT,
     name TEXT,
     github_id TEXT UNIQUE,
+    role TEXT DEFAULT 'user',
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -105,6 +106,13 @@ const aiItemsColumns = db.prepare("PRAGMA table_info(ai_items)").all();
 const aiItemsColumnNames = new Set(aiItemsColumns.map((column) => column.name));
 if (!aiItemsColumnNames.has("source_url")) {
   db.prepare("ALTER TABLE ai_items ADD COLUMN source_url TEXT").run();
+}
+
+// 迁移：为已有 users 表添加 role 字段
+const usersColumns = db.prepare("PRAGMA table_info(users)").all();
+const usersColumnNames = new Set(usersColumns.map((column) => column.name));
+if (!usersColumnNames.has("role")) {
+  db.prepare("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'").run();
 }
 
 module.exports = db;
