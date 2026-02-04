@@ -41,9 +41,17 @@ function requireAdmin(req, res, next) {
   }
   // 从数据库获取最新的角色信息
   const db = require("../db");
-  const user = db.prepare("SELECT role FROM users WHERE id = ?").get(req.user.id);
+  const user = db.prepare("SELECT email, role FROM users WHERE id = ?").get(req.user.id);
   if (!user || user.role !== "admin") {
-    return res.status(403).json({ code: 403, msg: "无权限访问" });
+    return res.status(403).json({
+      code: 403,
+      msg: "无权限访问",
+      debug: {
+        id: req.user.id,
+        email: user ? user.email.replace(/(.{2}).+(@.+)/, "$1***$2") : "unknown",
+        role: user ? user.role : "none",
+      },
+    });
   }
   return next();
 }

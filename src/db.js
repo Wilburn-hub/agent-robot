@@ -116,6 +116,10 @@ if (!usersColumnNames.has("role")) {
 }
 
 // 自动设置初始管理员 (针对线上环境手动同步角色)
-db.prepare("UPDATE users SET role = 'admin' WHERE email = ?").run("liuweijia.vip@gmail.com");
+const adminEmails = ["liuweijia.vip@gmail.com", process.env.ADMIN_EMAIL].filter(Boolean);
+if (adminEmails.length > 0) {
+  const placeholders = adminEmails.map(() => "?").join(",");
+  db.prepare(`UPDATE users SET role = 'admin' WHERE email IN (${placeholders})`).run(...adminEmails);
+}
 
 module.exports = db;
