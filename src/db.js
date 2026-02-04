@@ -99,7 +99,17 @@ db.exec(`
     channel_id INTEGER,
     status TEXT,
     detail TEXT,
-    sent_at TEXT DEFAULT (datetime('now'))
+    sent_at TEXT DEFAULT (datetime('now')),
+    sent_key TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS data_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE,
+    last_run_at TEXT,
+    last_status TEXT,
+    last_message TEXT,
+    last_count INTEGER DEFAULT 0
   );
 `);
 
@@ -120,6 +130,12 @@ const usersColumns = db.prepare("PRAGMA table_info(users)").all();
 const usersColumnNames = new Set(usersColumns.map((column) => column.name));
 if (!usersColumnNames.has("role")) {
   db.prepare("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'").run();
+}
+
+const pushLogsColumns = db.prepare("PRAGMA table_info(push_logs)").all();
+const pushLogsColumnNames = new Set(pushLogsColumns.map((column) => column.name));
+if (!pushLogsColumnNames.has("sent_key")) {
+  db.prepare("ALTER TABLE push_logs ADD COLUMN sent_key TEXT").run();
 }
 
 // 自动设置初始管理员 (针对线上环境手动同步角色)

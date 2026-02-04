@@ -31,7 +31,7 @@
 | 测试推送 | POST | /api/channels/:type/test | - | 发送结果 |
 | 获取设置 | GET | /api/settings | - | schedule, channels |
 | 保存设置 | PUT | /api/settings | time, timezone, frequency, content | - |
-| 强制刷新 | POST | /api/admin/refresh | - | - |
+| 强制刷新 | POST | /api/admin/refresh | - | trending, ai |
 
 ## 通用响应格式
 

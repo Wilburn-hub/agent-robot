@@ -26,8 +26,7 @@ const authRouter = require("./src/routes/auth");
 const dataRouter = require("./src/routes/data");
 const settingsRouter = require("./src/routes/settings");
 const adminRouter = require("./src/routes/admin");
-const { fetchGitHubTrending } = require("./src/services/github");
-const { fetchAiFeedsForAllUsers } = require("./src/services/ai");
+const { refreshAll } = require("./src/services/refresh");
 
 const app = express();
 
@@ -61,8 +60,7 @@ startScheduler();
 
 async function bootstrap() {
   try {
-    await fetchGitHubTrending();
-    await fetchAiFeedsForAllUsers();
+    await refreshAll({ reason: "bootstrap" });
   } catch (error) {
     console.error("初始化数据抓取失败:", error.message);
   }

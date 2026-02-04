@@ -1,10 +1,10 @@
 const express = require("express");
 const db = require("../db");
-const { fetchGitHubTrending } = require("../services/github");
-const { fetchAiFeedsForAllUsers, fetchAiFeedsForUser, classifyAiItem, getDefaultSourceUrls } = require("../services/ai");
+const { classifyAiItem, getDefaultSourceUrls } = require("../services/ai");
 const { buildDigestText } = require("../services/digest");
 const { sendDigestByChannel } = require("../services/push");
 const { requireAuth } = require("../utils/auth");
+const { refreshAll, refreshTrendingIfStale, refreshAiFeeds } = require("../services/refresh");
 
 const router = express.Router();
 
@@ -164,7 +164,12 @@ router.post("/digest/send", requireAuth, async (req, res) => {
     return res.status(400).json({ code: 400, msg: "请先绑定推送通道" });
   }
 
-  await fetchAiFeedsForUser(userId);
+  try {
+    await refreshTrendingIfStale(360);
+    await refreshAiFeeds({ reason: "manual" });
+  } catch (error) {
+    console.warn("手动推送前刷新失败:", error.message);
+  }
   const text = await buildDigestText({ ...contentConfig, userId });
   const results = [];
   for (const channel of channels) {
@@ -187,9 +192,8 @@ router.post("/admin/refresh", async (req, res) => {
   if (!process.env.ADMIN_TOKEN || adminToken !== process.env.ADMIN_TOKEN) {
     return res.status(403).json({ code: 403, msg: "无权限" });
   }
-  await fetchGitHubTrending();
-  await fetchAiFeedsForAllUsers();
-  return res.json({ code: 200, msg: "刷新完成" });
+  const result = await refreshAll({ reason: "manual" });
+  return res.json({ code: 200, msg: "刷新完成", data: result });
 });
 
 module.exports = router;

@@ -58,6 +58,12 @@ npm run start
 | `TRANSLATE_ENDPOINT` | 否 | `https://libretranslate.com/translate` | 翻译服务地址 |
 | `TRANSLATE_API_KEY` | 否 | - | 翻译服务密钥 |
 | `TRANSLATE_TIMEOUT` | 否 | `6000` | 翻译超时（毫秒） |
+| `TRENDING_REFRESH_CRON` | 否 | `0 6 * * *` | GitHub Trending 刷新时间（Cron） |
+| `AI_REFRESH_CRON` | 否 | `*/30 * * * *` | AI RSS 刷新时间（Cron） |
+| `CLEANUP_CRON` | 否 | `30 3 * * *` | 数据清理时间（Cron） |
+| `AI_RETENTION_DAYS` | 否 | `30` | AI 资讯保留天数 |
+| `TRENDING_RETENTION_DAYS` | 否 | `90` | Trending 快照保留天数 |
+| `PUSH_LOG_RETENTION_DAYS` | 否 | `90` | 推送日志保留天数 |
 
 ## 数据刷新
 
@@ -67,6 +73,8 @@ npm run start
 curl -X POST http://localhost:3000/api/admin/refresh \
   -H "x-admin-token: <ADMIN_TOKEN>"
 ```
+
+系统还内置定时刷新与清理任务，可通过环境变量调整执行时间与保留周期。
 
 ## 推送通道配置
 

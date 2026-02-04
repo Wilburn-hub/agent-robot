@@ -70,6 +70,7 @@
 | timezone | push_schedule.timezone | 时区 |
 | frequency | push_schedule.frequency | daily/weekday/weekly |
 | content | push_schedule.content_json | 推送内容配置 |
+| sentKey | push_logs.sent_key | 定时推送防重复标识 |
 
 ## API 路径
 - `POST /api/auth/register`

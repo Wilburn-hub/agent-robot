@@ -13,6 +13,9 @@ router.get("/stats", (req, res) => {
   const channelCount = db.prepare("SELECT COUNT(*) as count FROM push_channels WHERE active = 1").get().count;
   const logCount = db.prepare("SELECT COUNT(*) as count FROM push_logs").get().count;
   const successCount = db.prepare("SELECT COUNT(*) as count FROM push_logs WHERE status = 'success'").get().count;
+  const dataJobs = db
+    .prepare("SELECT name, last_run_at, last_status, last_message, last_count FROM data_jobs ORDER BY name ASC")
+    .all();
 
   return res.json({
     code: 200,
@@ -22,6 +25,7 @@ router.get("/stats", (req, res) => {
       channelCount,
       logCount,
       successRate: logCount > 0 ? Math.round((successCount / logCount) * 100) : 0,
+      dataJobs,
     },
   });
 });

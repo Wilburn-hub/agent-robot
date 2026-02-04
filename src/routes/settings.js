@@ -2,7 +2,8 @@ const express = require("express");
 const db = require("../db");
 const { requireAuth } = require("../utils/auth");
 const { sendDigestByChannel } = require("../services/push");
-const { fetchAiFeedsForUser, defaultFeeds } = require("../services/ai");
+const { defaultFeeds } = require("../services/ai");
+const { refreshTrendingIfStale, refreshAiFeeds } = require("../services/refresh");
 
 const router = express.Router();
 
@@ -141,7 +142,8 @@ router.post("/channels/:type/test", requireAuth, async (req, res) => {
     }
   }
   try {
-    await fetchAiFeedsForUser(req.user.id);
+    await refreshTrendingIfStale(360);
+    await refreshAiFeeds({ reason: "manual" });
     const result = await sendDigestByChannel(channel, contentConfig, { userId: req.user.id });
     return res.json({ code: 200, msg: "success", data: result });
   } catch (error) {
