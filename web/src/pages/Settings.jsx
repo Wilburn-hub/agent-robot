@@ -7,6 +7,7 @@ const defaultTopics = [
   { key: "ai", label: "AI 资讯" },
   { key: "trending", label: "趋势排行" },
   { key: "papers", label: "研究论文" },
+  { key: "skills", label: "Skills 热度" },
 ];
 
 export default function Settings() {
@@ -18,6 +19,8 @@ export default function Settings() {
     aiLimit: 20,
     trendingLimit: 5,
     papersLimit: 5,
+    skillsType: "trending",
+    skillsLimit: 8,
   });
   const [wecom, setWecom] = useState({ name: "", webhook: "", active: true });
   const [feishu, setFeishu] = useState({ name: "", webhook: "", secret: "", active: true });
@@ -58,6 +61,8 @@ export default function Settings() {
               aiLimit: parsed.aiLimit || 20,
               trendingLimit: parsed.trendingLimit || 5,
               papersLimit: parsed.papersLimit || 5,
+              skillsType: parsed.skillsType || "trending",
+              skillsLimit: parsed.skillsLimit || 8,
             });
           }
         }
@@ -657,6 +662,31 @@ export default function Settings() {
                 />
               </div>
             </div>
+            {content.topics.includes("skills") ? (
+              <div className="field-row">
+                <div className="field">
+                  <label>Skills 榜单类型</label>
+                  <select
+                    value={content.skillsType}
+                    onChange={(event) => setContent({ ...content, skillsType: event.target.value })}
+                  >
+                    <option value="trending">24H 热门</option>
+                    <option value="hot">热度变化</option>
+                    <option value="all_time">历史累计</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Skills 条数</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={content.skillsLimit}
+                    onChange={(event) => setContent({ ...content, skillsLimit: event.target.value })}
+                  />
+                </div>
+              </div>
+            ) : null}
             <div className="save-bar">
               <p className="helper">支持为不同渠道设置不同内容组合。</p>
               <button className="primary" type="button" onClick={saveSchedule}>保存全部设置</button>

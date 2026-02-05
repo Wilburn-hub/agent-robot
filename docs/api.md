@@ -158,7 +158,7 @@
 **请求参数**
 | 参数名 | 类型 | 必填 | 说明 | 示例 |
 |--------|------|------|------|------|
-| topics | string | ❌ | 逗号分隔 topics | "weekly,ai" |
+| topics | string | ❌ | 逗号分隔 topics（weekly/ai/papers/skills） | "weekly,ai" |
 | keywords | string | ❌ | 关键词 | "LLM,Agent" |
 
 **响应数据**
@@ -197,7 +197,7 @@
 | time | string | ✅ | HH:mm | "08:30" |
 | timezone | string | ✅ | 时区 | "Asia/Shanghai" |
 | frequency | string | ✅ | daily/weekday/weekly | "daily" |
-| content | object | ❌ | 推送内容 | {"topics": ["weekly","ai"], "keywords": "LLM"} |
+| content | object | ❌ | 推送内容 | {"topics": ["weekly","ai","skills"], "keywords": "LLM", "skillsType": "trending", "skillsLimit": 8} |
 
 ### 保存企微通道
 **请求信息**

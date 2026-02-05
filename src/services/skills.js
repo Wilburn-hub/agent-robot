@@ -1,6 +1,13 @@
 const axios = require("axios");
 const db = require("../db");
 
+const SKILLS_TYPES = new Set(["trending", "hot", "all_time"]);
+
+function normalizeSkillsType(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return SKILLS_TYPES.has(normalized) ? normalized : "trending";
+}
+
 function getTodayDate() {
   const now = new Date();
   const year = now.getFullYear();
@@ -159,6 +166,25 @@ async function fetchSkillsLeaderboard() {
   return result;
 }
 
+function getLatestSkills(listType = "trending", limit = 20) {
+  const normalizedType = normalizeSkillsType(listType);
+  const latest = db
+    .prepare("SELECT MAX(snapshot_date) AS date FROM skills_items WHERE list_type = ?")
+    .get(normalizedType);
+  if (!latest || !latest.date) {
+    return { list: [], snapshot: null, listType: normalizedType };
+  }
+  const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 200);
+  const rows = db
+    .prepare(
+      "SELECT * FROM skills_items WHERE list_type = ? AND snapshot_date = ? ORDER BY rank ASC LIMIT ?"
+    )
+    .all(normalizedType, latest.date, safeLimit);
+  return { list: rows, snapshot: latest.date, listType: normalizedType };
+}
+
 module.exports = {
   fetchSkillsLeaderboard,
+  getLatestSkills,
+  normalizeSkillsType,
 };

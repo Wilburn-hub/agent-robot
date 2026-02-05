@@ -212,11 +212,19 @@ async function sendWeChatTemplateMessage(channel, contentConfig, extra = {}) {
   });
 
   const aiTitles = (digest.aiItems.length ? digest.aiItems : digest.papers).map((item) => item.title).join(" / ");
+  const topics = Array.isArray(contentConfig.topics) ? contentConfig.topics : [];
+  const skillsEnabled = topics.includes("skills");
+  const skillsNames = skillsEnabled
+    ? digest.skillsItems.map((item) => item.name || item.skill_id || "").filter(Boolean).join(" / ")
+    : "";
+  const remarkValue = skillsEnabled
+    ? `Skills：${skillsNames || "暂无榜单"}\n点击查看完整周报`
+    : "点击查看完整周报";
   let templateData = {
     title: { value: "AI 机器人周报" },
     keyword1: { value: digest.trending.map((item) => item.name).join(" / ") || "本期无热度项目" },
     keyword2: { value: aiTitles || "本期无 AI 更新" },
-    remark: { value: "点击查看完整周报" },
+    remark: { value: remarkValue },
   };
 
   if (template_json) {

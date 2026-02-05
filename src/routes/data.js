@@ -4,7 +4,7 @@ const { classifyAiItem, getDefaultSourceUrls } = require("../services/ai");
 const { buildDigestText } = require("../services/digest");
 const { sendDigestByChannel } = require("../services/push");
 const { requireAuth } = require("../utils/auth");
-const { refreshAll, refreshTrendingIfStale, refreshAiFeeds } = require("../services/refresh");
+const { refreshAll, refreshTrendingIfStale, refreshAiFeeds, refreshSkillsIfStale } = require("../services/refresh");
 
 const router = express.Router();
 
@@ -196,6 +196,14 @@ router.get("/digest/preview", async (req, res) => {
     ? topicsParam.split(",").map((item) => item.trim()).filter(Boolean)
     : ["weekly", "ai"];
 
+  try {
+    await refreshTrendingIfStale(360);
+    await refreshAiFeeds({ reason: "manual" });
+    await refreshSkillsIfStale(360);
+  } catch (error) {
+    console.warn("预览生成前刷新失败:", error.message);
+  }
+
   const text = await buildDigestText({ topics, keywords });
   return res.json({ code: 200, msg: "success", data: { text } });
 });
@@ -221,6 +229,7 @@ router.post("/digest/send", requireAuth, async (req, res) => {
   try {
     await refreshTrendingIfStale(360);
     await refreshAiFeeds({ reason: "manual" });
+    await refreshSkillsIfStale(360);
   } catch (error) {
     console.warn("手动推送前刷新失败:", error.message);
   }
